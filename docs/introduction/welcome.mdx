@@ -1,35 +1,56 @@
 ---
-title: Welcome
+title: Welcome to BeeAI
 sidebarTitle: Welcome
-description: "Discover, run, and orchestrate AI agents from any framework"
-icon: "door-open"
+description: "Deploy, share, and govern agents across your organization"
+# icon: "door-open"
 ---
 
-## What is BeeAI Platform?
+BeeAI is an open-source platform that enables organizations to deploy their own AI agent infrastructure. By establishing a centralized platform instance within your organization, BeeAI eliminates the technical barriers between developer teams and end users through standardized agent packaging, deployment, discovery, and governance.
 
-**BeeAI Platform** is the first open-source platform built on the [Agent Communication Protocol (ACP)](https://agentcommunicationprotocol.dev/), an open standard designed to enable smooth communication between AI agents, no matter what framework they're built on. Hosted by the **Linux Foundation**, BeeAI platform is driven by open governance and community collaboration.
+Built on the [Agent Communication Protocol (ACP)](https://agentcommunicationprotocol.dev/) and hosted by the Linux Foundation, BeeAI creates a consistent organizational layer for managing AI agents across any framework.
 
-With ACP at its core, BeeAI platform makes it easy to:
-- **Discover** agents built with different frameworks through our growing catalog
-- **Run** agents instantly with your preferred LLM provider through our intuitive UI and CLI interfaces, creating a frictionless "try experience" that just works
-- **Orchestrate** multiple specialized agents into powerful workflows using our growing catalog of meta-agents (like sequential-workflow)
+## The Problem BeeAI Solves
 
-## Key features
+Organizations trying to operationalize AI agents at scale face three critical challenges:
+- **Framework Fragmentation:** Development teams build agents using different frameworks (BeeAI, LangChain, CrewAI, custom), creating silos and duplicated efforts
+- **Deployment Complexity:** Each agent requires custom deployment processes, making organization-wide scaling difficult
+- **Discovery & Governance:** IT lacks centralized control while end users struggle to find and use available agents across the organization
 
-| Feature                 | Description                    |
-| :---------------------  | :------------------------------------------------------------ |
-| **ACP Native**  | Built from the ground up around ACP as the official implementation of the protocol  |
-| **Lifecycle Management** | Discover, install, configure, and run agents with simple commands             |
-| **Orchestration** | Connect specialized agents through standardized interfaces to create powerful workflows   |
-| **Discovery**     | Browse our curated catalog of ACP-compliant agents across multiple frameworks   |
-| **Catalog**       | Access ready-to-use agents for research, content creation, coding, and more    |
-| **LLM Integration** | Connect to any LLM provider (Ollama, OpenAI, Anthropic, etc.) with simple configuration  |
-| **Dual Interface Access** | Interact through both web UI and CLI depending on your preference           |
-| **Containerized Deployment** | Run agents in isolated containers with automated resource management for consistent performance |
+## How Your BeeAI Platform Instance Helps Your Organization
 
----
+By deploying BeeAI within your organization, you create a standardized infrastructure that supports all agent frameworks:
 
-## Get started
+### For IT & Platform Teams
+- Deploy once, manage everywhere - Set up a single BeeAI instance for your entire organization
+- Enforce consistent security, compliance, and governance policies across all agents
+- Optimize resource allocation and monitor usage across AI workloads
+- Establish a single connection point to approved LLM providers
+
+### For Development Teams
+- Use any agent framework without worrying about deployment logistics
+- Simplified packaging and deployment through standardized containers
+- Built-in monitoring and usage metrics
+- Self-service publishing to the organizational agent catalog
+
+### For Business Users
+- Access a unified catalog of all organization-approved agents
+- Consistent interface regardless of underlying agent technology
+- Self-service access to AI capabilities
+- Seamless agent updates without disruption
+
+## Key Features
+
+| Feature | How It Works | Business Value |
+| :------ | :----------- | :------------- |
+| **Organizational Deployment** | BeeAI can be deployed as a centralized platform instance within your organization | Establish a single source of truth for all AI agents with unified governance |
+| **Universal Framework Support** | BeeAI implements the Agent Communication Protocol (ACP) to standardize agent interfaces regardless of implementation | Teams can use the best tools for each job while maintaining deployment consistency |
+| **Containerized Agent Management** | Each agent is packaged in an isolated container with defined resource limits and security boundaries | Predictable performance, improved security, and efficient resource utilization |
+| **Centralized Agent Registry** | All agents register with a searchable catalog that tracks capabilities, access requirements, and usage patterns | Users can easily discover available agents and developers get visibility into usage |
+| **Unified Access Control** | Centralized authentication and authorization across all agents | Consistent security model regardless of agent implementation |
+| **LLM Provider Integration** | Single configuration point for enterprise LLM access | Control costs, enforce policies, and switch providers without changing agents |
+| **Observability** | Monitoring, logging, and metrics collection for all agents | Track performance, identify issues, and optimize resource allocation |
+
+## Get Started
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/introduction/quickstart">
@@ -50,9 +71,7 @@ With ACP at its core, BeeAI platform makes it easy to:
   </Card>
 </CardGroup>
 
----
-
-## Join the community
+## Join the Community
 
 <CardGroup cols={3}>
   <Card title="Discord" icon="discord" href="https://discord.gg/NradeA6ZNF">
