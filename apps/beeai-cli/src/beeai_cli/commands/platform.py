@@ -168,7 +168,7 @@ async def start(
             help="Import an image from a local Docker CLI into BeeAI platform",
         ),
     ] = [],
-    disable_telemetry_sharing: bool = typer.Option(False, help="Disable telemetry sharing"),
+    telemetry_sharing: bool = typer.Option(True, help="Control the sharing of telemetry data with the BeeAI team"),
     vm_driver: typing.Annotated[
         Optional[VMDriver], typer.Option(hidden=True, help="Platform driver: lima (VM) or docker (container)")
     ] = None,
@@ -309,7 +309,7 @@ async def start(
                                 "encryptionKey": "Ovx8qImylfooq4-HNwOzKKDcXLZCB3c_m0JlB9eJBxc=",  # Dummy key for local use
                                 "features": {"uiNavigation": True},
                                 "auth": {"enabled": False},
-                                "telemetry": {"sharing": not disable_telemetry_sharing},
+                                "telemetry": {"sharing": telemetry_sharing},
                             }
                         ),
                         "set": {key: value for key, value in (value.split("=", 1) for value in set_values_list)},
