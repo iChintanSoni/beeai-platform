@@ -184,11 +184,13 @@ async def start(
         ["brew", "services", "stop", "beeai"],
         "Cleaning up legacy BeeAI service",
         check=False,
+        ignore_missing=True,
     )
     run_command(
         ["brew", "services", "stop", "arize-phoenix"],
         "Cleaning up legacy Arize Phoenix service",
         check=False,
+        ignore_missing=True,
     )
 
     # Stage 1: Start VM

@@ -175,6 +175,7 @@ def run_command(
     env: dict = None,
     cwd: str = ".",
     check: bool = True,
+    ignore_missing: bool = False,
 ) -> subprocess.CompletedProcess:
     """Helper function to run a subprocess command and handle common errors."""
     env = env or {}
@@ -191,6 +192,8 @@ def run_command(
         console.print(f"{message} [[green]DONE[/green]]")
         return result
     except FileNotFoundError:
+        if ignore_missing:
+            return None
         console.print(f"{message} [[red]ERROR[/red]]")
         tool_name = cmd[0]
         console.print(f"[red]Error: {tool_name} is not installed. Please install {tool_name} first.[/red]")
