@@ -179,8 +179,8 @@ def run_command(
     """Helper function to run a subprocess command and handle common errors."""
     env = env or {}
     try:
-        with console.status(message + "...", spinner="dots"):
-            return subprocess.run(
+        with console.status(f"{message}...", spinner="dots"):
+            result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
@@ -188,14 +188,18 @@ def run_command(
                 env={**os.environ, **env},
                 cwd=cwd,
             )
+        console.print(f"{message} [[green]DONE[/green]]")
+        return result
     except FileNotFoundError:
+        console.print(f"{message} [[red]ERROR[/red]]")
         tool_name = cmd[0]
         console.print(f"[red]Error: {tool_name} is not installed. Please install {tool_name} first.[/red]")
         if tool_name == "limactl":
             console.print("[yellow]You can install Lima with: brew install lima[/yellow]")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        console.print(f"[red]ERROR: '{message}' failed with exit code {e.returncode}[/red]")
+        console.print(f"{message} [[red]ERROR[/red]]")
+        console.print(f"[red]Exit code: {e.returncode} [/red]")
         if e.stderr:
             console.print(f"[red]Error: {e.stderr.strip()}[/red]")
         if e.stdout:

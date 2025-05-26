@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import contextlib
 import enum
 import json
 import re
 import subprocess
-import time
 import urllib
 import urllib.parse
 from contextlib import asynccontextmanager
@@ -107,9 +107,9 @@ async def resolve_connection_error():
 
 
 async def wait_for_api(initial_delay_seconds=5, wait_seconds=300):
-    time.sleep(initial_delay_seconds)
+    await asyncio.sleep(initial_delay_seconds)
     for _ in range(wait_seconds):
-        time.sleep(1)
+        await asyncio.sleep(1)
         with contextlib.suppress(httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError, ConnectionError):
             await api_request("get", "providers")
             return True
