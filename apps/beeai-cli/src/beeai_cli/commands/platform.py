@@ -43,6 +43,62 @@ HelmChart = kr8s.asyncio.objects.new_class(
 )
 
 
+def _lima_yaml(k3s_port: int = 16443, beeai_port: int = 8333, phoenix_port: int = 6006) -> str:
+    return f"""minimumLimaVersion: 1.1.0
+
+base: template://_images/ubuntu-lts
+
+mounts:
+- location: "~/.beeai"
+  mountPoint: "/beeai"
+
+containerd:
+  system: false
+  user: false
+
+provision:
+- mode: system
+  script: |
+    #!/bin/sh
+    if [ ! -d /var/lib/rancher/k3s ]; then
+      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --write-kubeconfig-mode 644 --https-listen-port={k3s_port}" sh -
+    fi
+- mode: system
+  script: |
+    #!/bin/sh
+    until kubectl get configmap coredns -n kube-system >/dev/null 2>&1; do
+      sleep 2
+    done
+    TMP=$(mktemp -d)
+    HOST_IP=$(dig +noall +short host.lima.internal)
+    kubectl get configmap coredns -n kube-system -o yaml >$TMP/coredns.yaml
+    if ! grep -q "host.docker.internal" $TMP/coredns.yaml; then
+      awk -v ip="$HOST_IP" '/^  NodeHosts: \|{{print; print "    " ip " host.docker.internal"; next}}1' $TMP/coredns.yaml >$TMP/coredns-patched.yaml
+      kubectl apply -f $TMP/coredns-patched.yaml
+      kubectl -n kube-system rollout restart deployment coredns
+    fi
+
+probes:
+- script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 30s bash -c "until test -f /etc/rancher/k3s/k3s.yaml; do sleep 3; done"; then
+      echo >&2 "k3s is not running yet"
+      exit 1
+    fi
+
+copyToHost:
+- guest: "/etc/rancher/k3s/k3s.yaml"
+  host: "{{{{.Dir}}}}/copied-from-guest/kubeconfig.yaml"
+  deleteOnStop: true
+
+portForwards:
+  - guestPort: 31833
+    hostPort: {beeai_port}
+  - guestPort: 31606
+    hostPort: {phoenix_port}"""
+
+
 def _validate_driver(vm_driver: VMDriver | None) -> VMDriver:
     match vm_driver:
         case None:
@@ -116,6 +172,9 @@ async def start(
     vm_driver: typing.Annotated[
         Optional[VMDriver], typer.Option(hidden=True, help="Platform driver: lima (VM) or docker (container)")
     ] = None,
+    k3s_port: typing.Annotated[int, typer.Option(hidden=True)] = 16443,
+    beeai_port: typing.Annotated[int, typer.Option(hidden=True)] = 8333,
+    phoenix_port: typing.Annotated[int, typer.Option(hidden=True)] = 6006,
 ):
     """Start BeeAI platform."""
     vm_driver = _validate_driver(vm_driver)
@@ -136,14 +195,19 @@ async def start(
     configuration.home.mkdir(exist_ok=True)
     status = _get_platform_status(vm_driver, vm_name)
     if not status:
-        configuration.lima_home.mkdir(parents=True, exist_ok=True)
+        templates_dir = configuration.lima_home / "_templates"
+        if vm_driver == VMDriver.lima:
+            templates_dir.mkdir(parents=True, exist_ok=True)
+            templates_dir.joinpath(f"{vm_name}.yaml").write_text(
+                _lima_yaml(k3s_port=k3s_port, beeai_port=beeai_port, phoenix_port=phoenix_port)
+            )
         run_command(
             {
                 VMDriver.lima: [
                     "limactl",
                     "--tty=false",
                     "start",
-                    importlib.resources.files("beeai_cli.data") / "lima-vm.yaml",
+                    templates_dir / f"{vm_name}.yaml",
                     f"--name={vm_name}",
                 ],
                 VMDriver.docker: [
@@ -153,11 +217,11 @@ async def start(
                     f"--name={vm_name}",
                     f"--hostname={vm_name}",
                     "-p",
-                    "16443:16443",
+                    f"{k3s_port}:{k3s_port}",
                     "-p",
-                    "8333:31833",
+                    f"{beeai_port}:31833",
                     "-p",
-                    "6006:31606",
+                    f"{phoenix_port}:31606",
                     "-v",
                     f"{configuration.home}:/beeai",
                     "-d",
@@ -165,7 +229,7 @@ async def start(
                     "--",
                     "server",
                     "--write-kubeconfig-mode=644",
-                    "--https-listen-port=16443",
+                    f"--https-listen-port={k3s_port}",
                 ],
             }[vm_driver],
             "Creating BeeAI platform",
