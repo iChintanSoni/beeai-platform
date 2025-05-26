@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import json
-import pathlib
 import sys
 import shutil
 import time
 from typing import Optional
 import base64
 import typing
+import importlib.resources
 
 from beeai_cli.api import wait_for_api
 import typer
@@ -35,8 +35,6 @@ from beeai_cli.utils import VMDriver, run_command
 app = AsyncTyper()
 
 configuration = Configuration()
-
-DATA = pathlib.Path(__file__).joinpath("../../../../data").resolve()
 
 HelmChart = kr8s.asyncio.objects.new_class(
     kind="HelmChart",
@@ -133,7 +131,7 @@ async def start(
                     "limactl",
                     "--tty=false",
                     "start",
-                    DATA / "lima-vm.yaml",
+                    importlib.resources.files("beeai_cli.data") / "lima-vm.yaml",
                     f"--name={vm_name}",
                 ],
                 VMDriver.docker: [
@@ -222,7 +220,9 @@ async def start(
                         "namespace": "default",
                     },
                     "spec": {
-                        "chartContent": base64.b64encode((DATA / "helm-chart.tgz").read_bytes()).decode(),
+                        "chartContent": base64.b64encode(
+                            (importlib.resources.files("beeai_cli.data") / "helm-chart.tgz").read_bytes()
+                        ).decode(),
                         "targetNamespace": "beeai",
                         "createNamespace": True,
                         "valuesContent": yaml.dump(
@@ -257,7 +257,7 @@ async def start(
     with console.status("Waiting for BeeAI platform to be ready...", spinner="dots"):
         await wait_for_api()
 
-    console.print("[green]BeeAI platform deployed successfully![/green]")
+    console.print("[green]BeeAI platform started successfully![/green]")
 
 
 @app.command("stop")
