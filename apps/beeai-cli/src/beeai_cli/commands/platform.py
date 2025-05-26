@@ -299,7 +299,7 @@ async def start(
                     },
                     "spec": {
                         "chartContent": base64.b64encode(
-                            (importlib.resources.files("beeai_cli.data") / "helm-chart.tgz").read_bytes()
+                            (importlib.resources.files("beeai_cli") / "data" / "helm-chart.tgz").read_bytes()
                         ).decode(),
                         "targetNamespace": "beeai",
                         "createNamespace": True,
