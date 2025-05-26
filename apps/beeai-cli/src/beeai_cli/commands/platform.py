@@ -120,6 +120,18 @@ async def start(
     """Start BeeAI platform."""
     vm_driver = _validate_driver(vm_driver)
 
+    # Stage 0: Clean up legacy Brew services
+    run_command(
+        ["brew", "services", "stop", "beeai"],
+        "Cleaning up legacy BeeAI service",
+        check=False,
+    )
+    run_command(
+        ["brew", "services", "stop", "arize-phoenix"],
+        "Cleaning up legacy Arize Phoenix service",
+        check=False,
+    )
+
     # Stage 1: Start VM
     configuration.home.mkdir(exist_ok=True)
     status = _get_platform_status(vm_driver, vm_name)
