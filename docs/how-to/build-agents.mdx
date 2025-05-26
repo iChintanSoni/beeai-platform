@@ -1,14 +1,72 @@
 ---
 title: "Build Agents"
-description: "Under construction"
+description: "Learn how to build production-ready agents ready to be exposed and used in the BeeAI platform"
 # icon: "wrench"
 icon: "spinner"
 ---
 
-## Oops! Docs Under Construction!
+## Overview
 
-We're buzzing around right now, fueled by caffeine and sheer determination, actively working to complete this documentation. (We promise we're not just buzzing on Reddit. Probably.)
+The BeeAI platform utilizes Docker labels to collect essential metadata about agents without the necessity to run the Docker images directly. Each agent exposed in the BeeAI platform is a Docker container.
 
-In the meantime, bee 🐝 curious—dive into our [GitHub repository](https://github.com/i-am-bee/beeai) to explore the code or even lend a hand! Your contributions help the community grow and make this documentation bloom faster.
+Users must encapsulate their agents within a Dockerfile. To facilitate this, we provide a [template repository](https://github.com/i-am-bee/beeai-platform-agent-starter) containing both a "Hello World" agent example and a simple Dockerfile to quickly get users started.
 
-Thanks for your patience, and bee-lieve us—we appreciate your support in keeping our hive buzzing with open-source goodness!
+## Building Agent Images with BeeAI CLI
+
+To streamline your image building process, BeeAI provides the beeai build command. This command simplifies image creation and automatically ensures metadata labels are properly packed.
+
+### Usage
+
+Run the following command in your terminal either locally or within your Continuous Integration (CI) pipeline:
+
+```bash
+beeai build ./path-to-your-agent --tag my-agent:0.0.1 --multi-platform --no-import
+```
+
+### Integration with CI Pipelines
+
+The beeai build command integrates smoothly with common CI/CD systems, such as GitHub Actions, GitLab CI, or Jenkins. Here’s a sample GitHub Actions configuration:
+
+```yaml
+name: Build and Push Agent Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install BeeAI CLI
+      run: pip install beeai-cli
+
+    - name: Login to Docker Registry
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login your-registry.example.com -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Build and Push
+      run: |
+        beeai build ./path-to-your-agent --tag my-agent:0.0.1 --multi-platform --no-import
+        docker push your-registry.example.com/my-agent:0.0.1
+```
+
+
+### Running built Agent in the BeeAI Platform
+
+Once the Docker image is built, you can easily install the agent in any BeeAI platform instance by running:
+
+```sh
+beeai add your-registry.example.com/my-agent:0.0.1
+```
+
+This command allows quick integration of your agent image into the BeeAI platform, making it readily available for use and deployment.
