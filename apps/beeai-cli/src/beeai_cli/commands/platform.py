@@ -584,7 +584,6 @@ async def start(
                         "namespace": "default",
                     },
                     "spec": {
-                        "timeout": "1h",
                         "chartContent": base64.b64encode(
                             (importlib.resources.files("beeai_cli") / "data" / "helm-chart.tgz").read_bytes()
                         ).decode(),
@@ -633,14 +632,13 @@ async def start(
                 "kubectl",
                 "wait",
                 "--for=condition=Complete",
-                "--timeout=1h",
+                "--timeout=5m",
                 "job/helm-install-beeai",
             ],
             "Waiting for deploy job to be finished",
             env={"LIMA_HOME": str(Configuration().lima_home)},
             cwd="/",
         )
-
         await run_command(
             [
                 *{
