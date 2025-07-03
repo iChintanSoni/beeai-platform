@@ -19,6 +19,8 @@ from beeai_server.telemetry import configure_telemetry  # noqa: E402
 configure_telemetry()
 
 logger = logging.getLogger(__name__)
+SSL_KEYFILE = os.environ.get("SSL_KEYFILE", None)
+SSL_CERTFILE = os.environ.get("SSL_CERTFILE", None)
 
 
 def serve():
@@ -37,19 +39,38 @@ def serve():
             logger.error(f"Port {config.port} already in use, is another instance of beeai-server running?")
             return
 
+    params = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "beeai_server.application:app",
+        f"--host={host}",
+        f"--port={config.port}",
+        "--timeout-keep-alive=2",
+        "--timeout-graceful-shutdown=2",
+    ]
+
+    if SSL_KEYFILE is not None and SSL_CERTFILE is not None:
+        params.append(f"--ssl-keyfile={SSL_KEYFILE}")
+        params.append(f"--ssl-certfile={SSL_CERTFILE}")
+
     os.execv(
         sys.executable,
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "beeai_server.application:app",
-            f"--host={host}",
-            f"--port={config.port}",
-            "--timeout-keep-alive=2",
-            "--timeout-graceful-shutdown=2",
-        ],
+        params,
     )
+    # os.execv(
+    #     sys.executable,
+    #     [
+    #         sys.executable,
+    #         "-m",
+    #         "uvicorn",
+    #         "beeai_server.application:app",
+    #         f"--host={host}",
+    #         f"--port={config.port}",
+    #         "--timeout-keep-alive=2",
+    #         "--timeout-graceful-shutdown=2",
+    #     ],
+    # )
 
 
 def migrate():

@@ -165,6 +165,12 @@ spec:
             - name: AGENT_REGISTRY__LOCATIONS__{{ $name | upper }}
               value: {{ $location }}
             {{- end }}
+            {{- if .Values.usessl.enabled }}
+            - name: SSL_KEYFILE
+              value: /etc/config/private.pem
+            - name: SSL_CERTFILE
+              value: /etc/config/public.pem
+            {{- end}}
             - name: PERSISTENCE__ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

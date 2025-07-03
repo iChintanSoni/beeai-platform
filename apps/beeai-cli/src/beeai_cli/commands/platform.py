@@ -420,7 +420,7 @@ async def start(
                             "docker",
                             "exec",
                             vm_name,
-                            "k3s",
+                            # "k3s",
                             "kubectl",
                             "--kubeconfig=/etc/rancher/k3s/k3s.yaml",
                             "get",
@@ -505,6 +505,22 @@ async def start(
         for image in import_images:
             await import_image(image, vm_name=vm_name, vm_driver=vm_driver)
 
+        # install certificate manager
+        await run_command(
+            [
+                *{
+                    VMDriver.lima: [_limactl_exe(), "shell", "--tty=false", vm_name, "--"],
+                    VMDriver.docker: ["docker", "exec", "-i", vm_name],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[vm_driver],
+                "kubectl",
+                "apply",
+                "-f",
+                "https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml",
+            ],
+            "Installing certificate manager...",
+        )
+
         # Deploy HelmChart
         await run_command(
             [
@@ -513,7 +529,7 @@ async def start(
                     VMDriver.docker: ["docker", "exec", "-i", vm_name],
                     VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
                 }[vm_driver],
-                "k3s",
+                # "k3s",
                 "kubectl",
                 "--kubeconfig=/etc/rancher/k3s/k3s.yaml",
                 "apply",
@@ -559,7 +575,7 @@ async def start(
                     VMDriver.docker: ["docker", "exec", "-i", vm_name],
                     VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
                 }[vm_driver],
-                "k3s",
+                # "k3s",
                 "kubectl",
                 "--kubeconfig=/etc/rancher/k3s/k3s.yaml",
                 "wait",
@@ -578,7 +594,7 @@ async def start(
                     VMDriver.docker: ["docker", "exec", "-i", vm_name],
                     VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
                 }[vm_driver],
-                "k3s",
+                # "k3s",
                 "kubectl",
                 "--kubeconfig=/etc/rancher/k3s/k3s.yaml",
                 "wait",
@@ -598,7 +614,7 @@ async def start(
                     VMDriver.docker: ["docker", "exec", "-i", vm_name],
                     VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
                 }[vm_driver],
-                "k3s",
+                # "k3s",
                 "kubectl",
                 "--kubeconfig=/etc/rancher/k3s/k3s.yaml",
                 "wait",
@@ -706,15 +722,16 @@ async def import_image(
                 / "beeai"
             )
         else:
-            image_directory = pathlib.Path("/tmp/beeai")
-
-        image_directory.mkdir(exist_ok=True, parents=True)
+            image_directory = pathlib.Path("/beeai/images")
+        console.print(f"image_directory: [green] {image_directory} [/green]")
         image_filename = str(uuid.uuid4())
-        image_path = image_directory / image_filename
-
+        save_path = pathlib.Path(f"{Configuration().home}/images")
+        save_path.mkdir(exist_ok=True, parents=True)
+        save_image_path = save_path / image_filename
+        console.print(f"save_image_path: [green] {save_image_path} [/green]")
         try:
             await run_command(
-                ["docker", "image", "save", "-o", str(image_path), tag],
+                ["docker", "image", "save", "-o", str(save_image_path), tag],
                 f"Exporting image {tag} from Docker",
             )
 
@@ -730,7 +747,7 @@ async def import_image(
                                 vm_name,
                                 "--",
                                 "wslpath",
-                                str(image_path),
+                                str(save_image_path),
                             ],
                             "Detecting image path in WSL",
                             env={"WSL_UTF8": "1"},
@@ -740,7 +757,7 @@ async def import_image(
                     .strip()
                 )
                 if vm_driver == VMDriver.wsl
-                else f"/tmp/beeai/{image_filename}"
+                else f"/beeai/images/{image_filename}"
             )
 
             await run_command(
@@ -752,14 +769,14 @@ async def import_image(
                 + [
                     "/bin/sh",
                     "-c",
-                    f"{'sudo' if vm_driver == VMDriver.lima else ''} k3s ctr images import {vm_image_path}",
+                    f"{'sudo ' if vm_driver == VMDriver.lima else ''}ctr images import {vm_image_path}",
                 ],
                 f"Importing image {tag} into BeeAI platform",
                 env={"LIMA_HOME": str(Configuration().lima_home)},
                 cwd="/",
             )
         finally:
-            image_path.unlink()
+            save_image_path.unlink()
 
 
 @app.command("exec")
