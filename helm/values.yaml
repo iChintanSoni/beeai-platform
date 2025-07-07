@@ -114,10 +114,12 @@ resources:
 livenessProbe:
   httpGet:
     path: /
+    scheme: HTTPS
     port: http
 readinessProbe:
   httpGet:
     path: /
+    scheme: HTTPS
     port: http
 
 # Additional volumes on the output Deployment definition.
