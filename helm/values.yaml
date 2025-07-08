@@ -55,6 +55,7 @@ serviceAccount:
 # helm now allows creating a crds folder which will skip schema validation
 usessl:
   enabled: true
+  # CLIENT_ID: your oidc client id here
 
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
@@ -134,13 +135,28 @@ volumes:
               path: public.pem
             - key: tls.key
               path: private.pem
+      - secret:
+          name: ingestion-svc-tls
+          items:
+            - key: tls.crt
+              path: ingestion.pem
+            - key: tls.key
+              path: ingestion.key
     defaultMode: 420
+- name: jwks
+  persistentVolumeClaim:
+    claimName: beeai-jwks
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: 
 - name: secrets
   readOnly: true
   mountPath: /etc/config
+- name: jwks
+  mountPath: /jwks
+
+storage:
+  storage_class: local-path
 
 nodeSelector: { }
 

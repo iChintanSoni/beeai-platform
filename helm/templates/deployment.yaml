@@ -175,6 +175,10 @@ spec:
               value: /etc/config/private.pem
             - name: SSL_CERTFILE
               value: /etc/config/public.pem
+            - name: JWKS_ENDPOINT
+              value: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/jwks
+            - name: CLIENT_ID
+              value: {{ .Values.usessl.CLIENT_ID}}
             {{- end}}
             - name: PERSISTENCE__ENCRYPTION_KEY
               valueFrom:

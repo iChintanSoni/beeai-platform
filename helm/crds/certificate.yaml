@@ -14,3 +14,20 @@ spec:
     kind: Issuer
     name: default-issuer
   secretName: beeai-platform-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingestion-svc
+  namespace: default
+spec:
+  commonName: 
+  dnsNames:
+    - ingestion-svc
+    - ingestion-svc.default
+    - ingestion-svc.default.svc
+    - ingestion-svc.default.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: default-issuer
+  secretName: ingestion-svc-tls

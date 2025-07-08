@@ -22,9 +22,12 @@ from fastapi import FastAPI, APIRouter
 from fastapi import HTTPException
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import ORJSONResponse
+
 from kink import inject, di, Container
 from starlette.responses import FileResponse
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.exceptions import HTTPException as StarletteHttpException
 from opentelemetry.metrics import get_meter, Observation, CallbackOptions
 from fastapi.exceptions import RequestValidationError
@@ -45,8 +48,11 @@ from beeai_server.api.routes.llm import router as llm_router
 from beeai_server.api.routes.ui import router as ui_router
 from beeai_server.api.routes.embeddings import router as embeddings_router
 from beeai_server.api.routes.vector_stores import router as vector_stores_router
+from beeai_server.middleware.authentication_middleware import JwtAuthBackend, on_auth_error
 
 logger = logging.getLogger(__name__)
+
+middleware = [Middleware(AuthenticationMiddleware, backend=JwtAuthBackend(), on_error=on_auth_error)]
 
 
 def extract_messages(exc):
@@ -175,6 +181,7 @@ def app(*, dependency_overrides: Container | None = None) -> FastAPI:
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
         servers=[{"url": f"https://localhost:{configuration.port}"}],
+        middleware=middleware,
     )
 
     logger.info("Mounting routes...")
