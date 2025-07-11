@@ -65,6 +65,16 @@ class AuthenticatedUser:
         return self.admin
 
 
+no_token_paths = [
+    "/api/v1/acp/ping",
+    "/api/v1/auth",
+    "/api/v1/login",
+    "/api/v1/cli_login",
+    "/api/v1/cli_auth",
+    "/api/v1/docs",
+]
+
+
 class JwtAuthBackend(AuthenticationBackend):
     """
     Expects w3id, IBMiD, or ingestion Bearer token (JWT) in Authorization header.
@@ -88,8 +98,10 @@ class JwtAuthBackend(AuthenticationBackend):
         - Token is always verified prior to usage
         - The issuer can be *anything* as long as it decodes against the ingestion KEY.
         """
-        logger.info("-->authenticate_ingestion()")
+        logger.debug("-->authenticate_ingestion()")
         if "Authorization" not in conn.headers:
+            if conn.url.path in no_token_paths:
+                return
             logger.error("Missing Authorization header.")
             return
         auth = conn.headers["Authorization"]
@@ -110,8 +122,10 @@ class JwtAuthBackend(AuthenticationBackend):
         return None
 
     async def authenticate(self, conn):
-        logger.info("-->authenticate()")
+        logger.debug("-->authenticate()")
         if "Authorization" not in conn.headers:
+            if conn.url.path in no_token_paths:
+                return
             logger.error("Missing Authorization header.")
             return
         auth = conn.headers["Authorization"]

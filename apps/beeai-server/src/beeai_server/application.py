@@ -1,6 +1,6 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
-
+import secrets
 import logging
 import pathlib
 from contextlib import asynccontextmanager
@@ -28,7 +28,10 @@ from starlette.responses import FileResponse
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.exceptions import HTTPException as StarletteHttpException
+
 from opentelemetry.metrics import get_meter, Observation, CallbackOptions
 from fastapi.exceptions import RequestValidationError
 
@@ -48,11 +51,16 @@ from beeai_server.api.routes.llm import router as llm_router
 from beeai_server.api.routes.ui import router as ui_router
 from beeai_server.api.routes.embeddings import router as embeddings_router
 from beeai_server.api.routes.vector_stores import router as vector_stores_router
+from beeai_server.api.routes.auth import router as auth_router
 from beeai_server.middleware.authentication_middleware import JwtAuthBackend, on_auth_error
 
 logger = logging.getLogger(__name__)
-
-middleware = [Middleware(AuthenticationMiddleware, backend=JwtAuthBackend(), on_error=on_auth_error)]
+SESSION_KEY = secrets.token_hex(16)
+middleware = [
+    Middleware(AuthenticationMiddleware, backend=JwtAuthBackend(), on_error=on_auth_error),
+    Middleware(SessionMiddleware, secret_key=SESSION_KEY, https_only=True, session_cookie="beeai-platform"),
+    Middleware(HTTPSRedirectMiddleware),
+]
 
 
 def extract_messages(exc):
@@ -114,6 +122,7 @@ def mount_routes(app: FastAPI):
     )
 
     server_router = APIRouter()
+    server_router.include_router(auth_router, prefix="", tags=["auth"])
     server_router.include_router(acp_router, prefix="/acp")
     server_router.include_router(provider_router, prefix="/providers", tags=["providers"])
     server_router.include_router(env_router, prefix="/variables", tags=["variables"])
@@ -122,7 +131,6 @@ def mount_routes(app: FastAPI):
     server_router.include_router(ui_router, prefix="/ui", tags=["ui"])
     server_router.include_router(embeddings_router, prefix="/llm", tags=["embeddings"])
     server_router.include_router(vector_stores_router, prefix="/vector_stores", tags=["vector_stores"])
-
     app.mount("/healthcheck", lambda: "OK")
     app.include_router(server_router, prefix="/api/v1", tags=["provider"])
     app.mount("/", ui_app)

@@ -55,8 +55,9 @@ serviceAccount:
 # helm now allows creating a crds folder which will skip schema validation
 usessl:
   enabled: true
-  # CLIENT_ID: your oidc client id here
-
+  IBM_CLIENT_ID: <your_client_id_here>
+  IBM_CLIENT_SECRET: <your_client_secret_here>
+  DISCOVERY_ENDPOINT: <your_oidc_discovery_endpoint_here>
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: { }
@@ -114,12 +115,12 @@ resources:
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
-    path: /
+    path: /api/v1/acp/ping
     scheme: HTTPS
     port: http
 readinessProbe:
   httpGet:
-    path: /
+    path: /api/v1/acp/ping
     scheme: HTTPS
     port: http
 
