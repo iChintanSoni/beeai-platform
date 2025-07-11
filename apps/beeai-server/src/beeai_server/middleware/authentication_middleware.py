@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import jwt
 from fastapi.responses import JSONResponse
@@ -86,7 +86,7 @@ class JwtAuthBackend(AuthenticationBackend):
     """
 
     def __init__(self) -> None:
-        self.cit = datetime.now(datetime.UTC).timestamp()
+        self.cit = datetime.now(UTC).timestamp()
 
     async def authenticate_ingestion(self, conn):
         """
