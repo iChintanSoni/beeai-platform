@@ -3,8 +3,6 @@
 
 import fastapi
 import fastapi.responses
-from fastapi import Security
-from fastapi.security.api_key import APIKeyHeader
 from acp_sdk import PingResponse, SessionId, SessionReadResponse
 from acp_sdk.models import (
     AgentName,
@@ -16,9 +14,11 @@ from acp_sdk.models import (
     RunResumeRequest,
     RunResumeResponse,
 )
+from fastapi import Security
+from fastapi.security.api_key import APIKeyHeader
 
-from beeai_server.api.schema.acp import AgentsListResponse, AgentReadResponse
 from beeai_server.api.dependencies import AcpProxyServiceDependency, AuthenticatedUserDependency
+from beeai_server.api.schema.acp import AgentReadResponse, AgentsListResponse
 from beeai_server.service_layer.services.acp import AcpServerResponse
 
 api_key_header = APIKeyHeader(name="Authorization")

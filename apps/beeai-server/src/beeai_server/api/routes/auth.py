@@ -1,11 +1,12 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
-import os
 import logging
+import os
+
 import fastapi
-from starlette.responses import RedirectResponse
-from starlette.config import Config
 from authlib.integrations.starlette_client import OAuth
+from starlette.config import Config
+from starlette.responses import RedirectResponse
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,13 @@ router = fastapi.APIRouter()
 async def auth_success(token, is_cli):
     """Sets a cookie which the receiver can pull from the page"""
     response = RedirectResponse("/")
+    response.set_cookie(key="beeai-platform", value=token["id_token"], samesite="strict", secure=True, httponly=True)
     if is_cli:
         response.set_cookie("token", token["id_token"], samesite="strict", secure=True)
     return response
 
 
-# @app.get("/api/v1/login")
-@router.api_route("/login", methods=["GET"])
+@router.api_route("/login", methods=["GET"], tags=["auth"])
 async def login(request: fastapi.requests.Request):
     """
     Invoke the oidc flow
@@ -37,7 +38,7 @@ async def login(request: fastapi.requests.Request):
     return await oauth.ibm.authorize_redirect(request, redirect_uri)
 
 
-@router.api_route("/cli_login", methods=["GET"])
+@router.api_route("/cli_login", methods=["GET"], tags=["auth"])
 async def cli_login(request: fastapi.requests.Request):
     """
     Invoke the oidc flow
@@ -46,7 +47,7 @@ async def cli_login(request: fastapi.requests.Request):
     return await oauth.ibm.authorize_redirect(request, redirect_uri)
 
 
-@router.api_route("/auth", methods=["GET"])
+@router.api_route("/auth", methods=["GET"], tags=["auth"])
 async def auth(request: fastapi.requests.Request):
     """
     request a token from the oidc endpoint
@@ -62,7 +63,7 @@ async def auth(request: fastapi.requests.Request):
     return await auth_success(token, False)
 
 
-@router.api_route("/auth_cli", methods=["GET"])
+@router.api_route("/auth_cli", methods=["GET"], tags=["auth"])
 async def auth_cli(request: fastapi.requests.Request):
     """
     request a token from the oidc endpoint

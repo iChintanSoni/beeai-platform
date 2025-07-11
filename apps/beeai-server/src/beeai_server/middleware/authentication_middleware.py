@@ -1,23 +1,24 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
-from datetime import datetime, timezone
-import jwt
 import json
-import os
 import logging
+import os
+from datetime import datetime
+
+import jwt
 from fastapi.responses import JSONResponse
 from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError
 
 logger = logging.getLogger(__name__)
 
-AUDIENCE = os.environ.get("CLIENT_ID", None)
+AUDIENCE = os.environ.get("IBM_CLIENT_ID", None)
 
 JWKS_FOLDER = "/jwks"
 
 
 def get_jwks_dict():
-    with open(os.path.join(JWKS_FOLDER, "pubkeys.json")) as keyFile:
-        return json.load(keyFile)
+    with open(os.path.join(JWKS_FOLDER, "pubkeys.json")) as key_file:
+        return json.load(key_file)
 
 
 jwks_dict = get_jwks_dict()
@@ -85,7 +86,7 @@ class JwtAuthBackend(AuthenticationBackend):
     """
 
     def __init__(self) -> None:
-        self.cit = datetime.now(timezone.utc).timestamp()
+        self.cit = datetime.now(datetime.UTC).timestamp()
 
     async def authenticate_ingestion(self, conn):
         """
