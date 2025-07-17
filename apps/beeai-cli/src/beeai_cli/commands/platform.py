@@ -243,7 +243,13 @@ async def start(
                                     "arch": "aarch64",
                                 },
                             ],
-                            "mounts": [{"location": "/tmp/beeai", "mountPoint": "/tmp/beeai", "writable": True}],
+                            "mounts": [
+                                {
+                                    "location": f"{Configuration().home}/images",
+                                    "mountPoint": "/tmp/beeai",
+                                    "writable": True,
+                                }
+                            ],
                             "containerd": {"system": False, "user": False},
                             "hostResolver": {"hosts": {"host.docker.internal": "host.lima.internal"}},
                             "provision": [
@@ -687,13 +693,15 @@ async def import_image(
         else:
             image_directory = pathlib.Path("/tmp/beeai")
 
-        image_directory.mkdir(exist_ok=True, parents=True)
+        console.print(f"image_directory: [green] {image_directory} [/green]")
         image_filename = str(uuid.uuid4())
-        image_path = image_directory / image_filename
-
+        save_path = pathlib.Path(f"{Configuration().home}/images")
+        save_path.mkdir(exist_ok=True, parents=True)
+        save_image_path = save_path / image_filename
+        console.print(f"save_image_path: [green] {save_image_path} [/green]")
         try:
             await run_command(
-                ["docker", "image", "save", "-o", str(image_path), tag],
+                ["docker", "image", "save", "-o", str(save_image_path), tag],
                 f"Exporting image {tag} from Docker",
             )
 
@@ -709,7 +717,7 @@ async def import_image(
                                 vm_name,
                                 "--",
                                 "wslpath",
-                                str(image_path),
+                                str(save_image_path),
                             ],
                             "Detecting image path in WSL",
                             env={"WSL_UTF8": "1"},
@@ -737,7 +745,7 @@ async def import_image(
                 cwd="/",
             )
         finally:
-            image_path.unlink()
+            save_image_path.unlink()
 
 
 @app.command("exec")
