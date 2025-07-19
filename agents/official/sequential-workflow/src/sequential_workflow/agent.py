@@ -7,20 +7,20 @@ from typing import Any, AsyncIterator
 
 import yaml
 from acp_sdk import (
-    MessagePart,
-    Message,
-    MessagePartEvent,
-    GenericEvent,
-    MessageCompletedEvent,
     Error,
     ErrorCode,
-    Metadata,
+    GenericEvent,
     Link,
     LinkType,
+    Message,
+    MessageCompletedEvent,
+    MessagePart,
+    MessagePartEvent,
+    Metadata,
 )
 from acp_sdk.client import Client
 from acp_sdk.server import Server
-from pydantic import Field, BaseModel, AnyUrl
+from pydantic import AnyUrl, BaseModel, Field
 
 
 class WorkflowStep(BaseModel):
@@ -36,13 +36,19 @@ def format_agent_input(instruction: str, previous_output: dict[str, Any] | str) 
     if not previous_output:
         return instruction
     return f"""{
-        previous_output if isinstance(previous_output, str) else yaml.dump(previous_output, allow_unicode=True)
+        previous_output
+        if isinstance(previous_output, str)
+        else yaml.dump(previous_output, allow_unicode=True)
     }\n---\n{instruction}"""
 
 
 def extract_messages(exc):
     if isinstance(exc, BaseExceptionGroup):
-        return [(exc_type, msg) for e in exc.exceptions for exc_type, msg in extract_messages(e)]
+        return [
+            (exc_type, msg)
+            for e in exc.exceptions
+            for exc_type, msg in extract_messages(e)
+        ]
     else:
         return [(type(exc).__name__, str(exc))]
 
@@ -99,22 +105,38 @@ async def sequential_workflow(input: list[Message]) -> AsyncIterator:
     """
     try:
         last_message = input[-1]
-        step_part = [part for part in last_message.parts if part.content_type == "application/json"]
+        step_part = [
+            part
+            for part in last_message.parts
+            if part.content_type == "application/json"
+        ]
         if not step_part:
             raise ValueError("Missing steps configuration")
         steps = StepsConfiguration.model_validate_json(step_part[-1].content).steps
     except ValueError as ex:
-        yield Error(code=ErrorCode.INVALID_INPUT, message=f"Missing or invalid steps configuration: {ex}")
+        yield Error(
+            code=ErrorCode.INVALID_INPUT,
+            message=f"Missing or invalid steps configuration: {ex}",
+        )
         return
 
-    base_url = f"{os.getenv('PLATFORM_URL', 'http://localhost:8333').rstrip('/')}/api/v1/acp"
+    base_url = (
+        f"{os.getenv('PLATFORM_URL', 'http://localhost:8333').rstrip('/')}/api/v1/acp"
+    )
     current_step = None
 
     try:
         async with Client(base_url=base_url) as client:
-            server_agents_by_name = {agent.name: agent async for agent in client.agents()}
-            if missing_agents := (set(step.agent for step in steps) - server_agents_by_name.keys()):
-                yield Error(code=ErrorCode.INVALID_INPUT, message=f"The following agents are missing: {missing_agents}")
+            server_agents_by_name = {
+                agent.name: agent async for agent in client.agents()
+            }
+            if missing_agents := (
+                set(step.agent for step in steps) - server_agents_by_name.keys()
+            ):
+                yield Error(
+                    code=ErrorCode.INVALID_INPUT,
+                    message=f"The following agents are missing: {missing_agents}",
+                )
                 return
 
             previous_output = None
@@ -129,13 +151,27 @@ async def sequential_workflow(input: list[Message]) -> AsyncIterator:
 
                 async for event in client.run_stream(
                     agent=step.agent,
-                    input=[Message(parts=[MessagePart(content=format_agent_input(step.instruction, previous_output))])],
+                    input=[
+                        Message(
+                            parts=[
+                                MessagePart(
+                                    content=format_agent_input(
+                                        step.instruction, previous_output
+                                    )
+                                )
+                            ]
+                        )
+                    ],
                 ):
                     match event:
                         case MessagePartEvent(part=part):
-                            yield part.model_copy(update={"agent_idx": idx, "agent_name": step.agent})
+                            yield part.model_copy(
+                                update={"agent_idx": idx, "agent_name": step.agent}
+                            )
                         case GenericEvent(generic=generic):
-                            yield generic.model_copy(update={"agent_idx": idx, "agent_name": step.agent})
+                            yield generic.model_copy(
+                                update={"agent_idx": idx, "agent_name": step.agent}
+                            )
                         case MessageCompletedEvent(message=message):
                             previous_output = str(message)
                             yield {
@@ -146,7 +182,9 @@ async def sequential_workflow(input: list[Message]) -> AsyncIterator:
         yield MessagePart(content=previous_output)
     except Exception as e:
         step_msg = f"{current_step.agent}[{idx}] - " if current_step else ""
-        yield Error(code=ErrorCode.INVALID_INPUT, message=f"{step_msg}{extract_messages(e)}")
+        yield Error(
+            code=ErrorCode.INVALID_INPUT, message=f"{step_msg}{extract_messages(e)}"
+        )
 
 
 def run():

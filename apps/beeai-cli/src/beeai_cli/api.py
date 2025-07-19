@@ -64,7 +64,7 @@ async def api_request(
     method: str, path: str, json: dict | None = None, files: RequestFiles | None = None
 ) -> dict | None:
     """Make an API request to the server."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(verify=False) as client:
         response = await client.request(
             method,
             urllib.parse.urljoin(API_BASE_URL, path),
@@ -94,7 +94,7 @@ async def api_stream(
     import json as jsonlib
 
     async with (
-        httpx.AsyncClient() as client,
+        httpx.AsyncClient(verify=False) as client,
         client.stream(
             method,
             urllib.parse.urljoin(API_BASE_URL, path),

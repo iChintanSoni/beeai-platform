@@ -1,17 +1,16 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import logging
+import os
 from collections.abc import AsyncGenerator
 from textwrap import dedent
 
 import beeai_framework
-from acp_sdk import Message, Metadata, Link, LinkType, Annotations
+from acp_sdk import Annotations, Link, LinkType, Message, Metadata
 from acp_sdk.models import MessagePart
+from acp_sdk.models.platform import AgentToolInfo, PlatformUIAnnotation, PlatformUIType
 from acp_sdk.server import Context, Server
-from acp_sdk.models.platform import PlatformUIAnnotation, PlatformUIType, AgentToolInfo
-
 from beeai_framework.agents.react import ReActAgent, ReActAgentUpdateEvent
 from beeai_framework.backend import AssistantMessage, UserMessage
 from beeai_framework.backend.chat import ChatModel, ChatModelParameters
@@ -20,13 +19,17 @@ from beeai_framework.tools.search.duckduckgo import DuckDuckGoSearchTool
 from beeai_framework.tools.search.wikipedia import WikipediaTool
 from beeai_framework.tools.tool import AnyTool
 from beeai_framework.tools.weather.openmeteo import OpenMeteoTool
-from pydantic import AnyUrl
 from openinference.instrumentation.beeai import BeeAIInstrumentor
+from pydantic import AnyUrl
 
 BeeAIInstrumentor().instrument()
 ## TODO: https://github.com/phoenixframework/phoenix/issues/6224
-logging.getLogger("opentelemetry.exporter.otlp.proto.http._log_exporter").setLevel(logging.CRITICAL)
-logging.getLogger("opentelemetry.exporter.otlp.proto.http.metric_exporter").setLevel(logging.CRITICAL)
+logging.getLogger("opentelemetry.exporter.otlp.proto.http._log_exporter").setLevel(
+    logging.CRITICAL
+)
+logging.getLogger("opentelemetry.exporter.otlp.proto.http.metric_exporter").setLevel(
+    logging.CRITICAL
+)
 
 server = Server()
 
@@ -47,10 +50,17 @@ def to_framework_message(role: str, content: str) -> beeai_framework.backend.Mes
                 user_greeting="How can I help you?",
                 display_name="Chat",
                 tools=[
-                    AgentToolInfo(name="Web Search (DuckDuckGo)", description="Retrieves real-time search results."),
-                    AgentToolInfo(name="Wikipedia Search", description="Fetches summaries from Wikipedia."),
                     AgentToolInfo(
-                        name="Weather Information (OpenMeteo)", description="Provides real-time weather updates."
+                        name="Web Search (DuckDuckGo)",
+                        description="Retrieves real-time search results.",
+                    ),
+                    AgentToolInfo(
+                        name="Wikipedia Search",
+                        description="Fetches summaries from Wikipedia.",
+                    ),
+                    AgentToolInfo(
+                        name="Weather Information (OpenMeteo)",
+                        description="Provides real-time weather updates.",
                     ),
                 ],
             ),
@@ -101,9 +111,18 @@ def to_framework_message(role: str, content: str) -> beeai_framework.backend.Mes
             "**Agents with Long-Term Memory** – Maintains context across conversations for improved interactions.",
         ],
         env=[
-            {"name": "LLM_MODEL", "description": "Model to use from the specified OpenAI-compatible API."},
-            {"name": "LLM_API_BASE", "description": "Base URL for OpenAI-compatible API endpoint"},
-            {"name": "LLM_API_KEY", "description": "API key for OpenAI-compatible API endpoint"},
+            {
+                "name": "LLM_MODEL",
+                "description": "Model to use from the specified OpenAI-compatible API.",
+            },
+            {
+                "name": "LLM_API_BASE",
+                "description": "Base URL for OpenAI-compatible API endpoint",
+            },
+            {
+                "name": "LLM_API_KEY",
+                "description": "API key for OpenAI-compatible API endpoint",
+            },
         ],
     )
 )
@@ -114,9 +133,14 @@ async def chat(input: list[Message], context: Context) -> AsyncGenerator:
     """
 
     # ensure the model is pulled before running
-    os.environ["OPENAI_API_BASE"] = os.getenv("LLM_API_BASE", "http://localhost:11434/v1")
+    os.environ["OPENAI_API_BASE"] = os.getenv(
+        "LLM_API_BASE", "http://localhost:11434/v1"
+    )
     os.environ["OPENAI_API_KEY"] = os.getenv("LLM_API_KEY", "dummy")
-    llm = ChatModel.from_name(f"openai:{os.getenv('LLM_MODEL', 'llama3.1')}", ChatModelParameters(temperature=0))
+    llm = ChatModel.from_name(
+        f"openai:{os.getenv('LLM_MODEL', 'llama3.1')}",
+        ChatModelParameters(temperature=0),
+    )
 
     # Configure tools
     tools: list[AnyTool] = [WikipediaTool(), OpenMeteoTool(), DuckDuckGoSearchTool()]
@@ -126,7 +150,9 @@ async def chat(input: list[Message], context: Context) -> AsyncGenerator:
 
     history = [message async for message in context.session.load_history()]
 
-    framework_messages = [to_framework_message(message.role, str(message)) for message in history + input]
+    framework_messages = [
+        to_framework_message(message.role, str(message)) for message in history + input
+    ]
     await agent.memory.add_many(framework_messages)
 
     async for data, event in agent.run():
@@ -143,7 +169,11 @@ async def chat(input: list[Message], context: Context) -> AsyncGenerator:
 
 
 def run():
-    server.run(host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", 8000)), configure_telemetry=True)
+    server.run(
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", 8000)),
+        configure_telemetry=True,
+    )
 
 
 if __name__ == "__main__":

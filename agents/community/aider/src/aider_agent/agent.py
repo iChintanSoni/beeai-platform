@@ -3,19 +3,27 @@
 
 import asyncio
 import io
-import subprocess
+import mimetypes
 import os
+import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from textwrap import dedent
 
+from acp_sdk import (
+    Annotations,
+    Artifact,
+    Link,
+    LinkType,
+    Message,
+    MessagePart,
+    Metadata,
+)
 from acp_sdk.models.platform import PlatformUIAnnotation, PlatformUIType
-from acp_sdk import Annotations, Message, Metadata, Link, LinkType, MessagePart, Artifact
 from acp_sdk.server import Context, Server
 from pydantic import AnyUrl
-import mimetypes
 
 server = Server()
 
@@ -81,8 +89,16 @@ server = Server()
                 "required": False,
                 "description": "Model to use from the specified OpenAI-compatible API.",
             },
-            {"name": "LLM_API_BASE", "required": False, "description": "Base URL for OpenAI-compatible API endpoint"},
-            {"name": "LLM_API_KEY", "required": False, "description": "API key for OpenAI-compatible API endpoint"},
+            {
+                "name": "LLM_API_BASE",
+                "required": False,
+                "description": "Base URL for OpenAI-compatible API endpoint",
+            },
+            {
+                "name": "LLM_API_KEY",
+                "required": False,
+                "description": "API key for OpenAI-compatible API endpoint",
+            },
             {
                 "name": "AIDER_REASONING_EFFORT",
                 "required": False,
@@ -156,7 +172,9 @@ async def aider(input: list[Message], context: Context) -> AsyncGenerator:
         try:
             env = os.environ.copy()
             env["OPENAI_API_KEY"] = env.get("LLM_API_KEY", "dummy")
-            env["OPENAI_API_BASE"] = env.get("LLM_API_BASE", "http://localhost:11434/v1")
+            env["OPENAI_API_BASE"] = env.get(
+                "LLM_API_BASE", "http://localhost:11434/v1"
+            )
             env["AIDER_MODEL"] = f"openai/{env.get('LLM_MODEL', 'llama3.1')}"
             process = await asyncio.create_subprocess_exec(
                 sys.executable,
@@ -183,7 +201,9 @@ async def aider(input: list[Message], context: Context) -> AsyncGenerator:
             )
 
             binary_buffer = io.BytesIO()
-            string_reader = io.TextIOWrapper(buffer=binary_buffer, encoding="utf-8", errors="ignore")
+            string_reader = io.TextIOWrapper(
+                buffer=binary_buffer, encoding="utf-8", errors="ignore"
+            )
             while True:
                 chunk = await process.stdout.read(1024)
                 if not chunk:
@@ -199,13 +219,22 @@ async def aider(input: list[Message], context: Context) -> AsyncGenerator:
             await process.wait()
 
             if process.returncode != 0:
-                error_text = stderr_bytes.decode(errors="ignore") if stderr_bytes else "Unknown error occurred"
-                yield MessagePart(content=f"\nAider process failed with error:\n{error_text}", role="assistant")
+                error_text = (
+                    stderr_bytes.decode(errors="ignore")
+                    if stderr_bytes
+                    else "Unknown error occurred"
+                )
+                yield MessagePart(
+                    content=f"\nAider process failed with error:\n{error_text}",
+                    role="assistant",
+                )
                 return
 
             for file_path in tmp_path.rglob("*"):
                 if any(
-                    part in [".git", "node_modules", ".venv"] or part.startswith(".aider.") for part in file_path.parts
+                    part in [".git", "node_modules", ".venv"]
+                    or part.startswith(".aider.")
+                    for part in file_path.parts
                 ):
                     continue
                 if file_path.is_file():
@@ -214,15 +243,20 @@ async def aider(input: list[Message], context: Context) -> AsyncGenerator:
                         relative_path = str(file_path.relative_to(tmp_path))
                         content_type, _ = mimetypes.guess_type(relative_path)
                         yield Artifact(
-                            name=relative_path, content=content, content_type=content_type or "application/octet-stream"
+                            name=relative_path,
+                            content=content,
+                            content_type=content_type or "application/octet-stream",
                         )
                     except Exception as e:
                         yield MessagePart(
-                            content=f"Error reading file {file_path.relative_to(tmp_path)}: {str(e)}", role="assistant"
+                            content=f"Error reading file {file_path.relative_to(tmp_path)}: {str(e)}",
+                            role="assistant",
                         )
 
         except Exception as e:
-            yield MessagePart(content=f"An unexpected error occurred: {str(e)}", role="assistant")
+            yield MessagePart(
+                content=f"An unexpected error occurred: {str(e)}", role="assistant"
+            )
 
 
 def run():

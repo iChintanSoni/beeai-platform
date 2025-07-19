@@ -40,6 +40,7 @@ from beeai_server.api.routes.llm import router as llm_router
 from beeai_server.api.routes.provider import router as provider_router
 from beeai_server.api.routes.ui import router as ui_router
 from beeai_server.api.routes.vector_stores import router as vector_stores_router
+from beeai_server.auth.backend import JwtAuthBackend, on_auth_error
 from beeai_server.bootstrap import bootstrap_dependencies_sync
 from beeai_server.configuration import Configuration
 from beeai_server.exceptions import (
@@ -47,7 +48,6 @@ from beeai_server.exceptions import (
     ManifestLoadError,
     PlatformError,
 )
-from beeai_server.middleware.authentication_middleware import JwtAuthBackend, on_auth_error
 from beeai_server.run_workers import run_workers
 from beeai_server.telemetry import INSTRUMENTATION_NAME, shutdown_telemetry
 from beeai_server.utils.fastapi import NoCacheStaticFiles

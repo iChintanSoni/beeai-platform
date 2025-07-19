@@ -16,10 +16,8 @@ from acp_sdk import (
     PlatformUIAnnotation,
 )
 from acp_sdk.models.platform import PlatformUIType
-
-from gpt_researcher import GPTResearcher
-
 from acp_sdk.server import Context, Server
+from gpt_researcher import GPTResearcher
 
 server = Server()
 
@@ -67,16 +65,34 @@ server = Server()
             "**Customizable** – Offers customization options to tailor research for specific domains or tasks.",
         ],
         env=[
-            {"name": "LLM_MODEL", "description": "Model to use from the specified OpenAI-compatible API."},
-            {"name": "LLM_API_BASE", "description": "Base URL for OpenAI-compatible API endpoint"},
-            {"name": "LLM_API_KEY", "description": "API key for OpenAI-compatible API endpoint"},
-            {"name": "LLM_MODEL_FAST", "description": "Fast model to use from the specified OpenAI-compatible API."},
-            {"name": "LLM_MODEL_SMART", "description": "Smart model to use from the specified OpenAI-compatible API."},
+            {
+                "name": "LLM_MODEL",
+                "description": "Model to use from the specified OpenAI-compatible API.",
+            },
+            {
+                "name": "LLM_API_BASE",
+                "description": "Base URL for OpenAI-compatible API endpoint",
+            },
+            {
+                "name": "LLM_API_KEY",
+                "description": "API key for OpenAI-compatible API endpoint",
+            },
+            {
+                "name": "LLM_MODEL_FAST",
+                "description": "Fast model to use from the specified OpenAI-compatible API.",
+            },
+            {
+                "name": "LLM_MODEL_SMART",
+                "description": "Smart model to use from the specified OpenAI-compatible API.",
+            },
             {
                 "name": "LLM_MODEL_STRATEGIC",
                 "description": "Strategic model to use from the specified OpenAI-compatible API.",
             },
-            {"name": "EMBEDDING_MODEL", "description": "Embedding model to use (see GPT Researcher docs for details)"},
+            {
+                "name": "EMBEDDING_MODEL",
+                "description": "Embedding model to use (see GPT Researcher docs for details)",
+            },
         ],
     )
 )
@@ -86,7 +102,9 @@ async def gpt_researcher(input: list[Message], context: Context) -> None:
     citations, aimed at delivering factual, unbiased information.
     """
     os.environ["RETRIEVER"] = "duckduckgo"
-    os.environ["OPENAI_BASE_URL"] = os.getenv("LLM_API_BASE", "http://localhost:11434/v1")
+    os.environ["OPENAI_BASE_URL"] = os.getenv(
+        "LLM_API_BASE", "http://localhost:11434/v1"
+    )
     os.environ["OPENAI_API_KEY"] = os.getenv("LLM_API_KEY", "dummy")
     model = os.getenv("LLM_MODEL", "llama3.1")
     os.environ["LLM_MODEL"] = model
@@ -108,7 +126,11 @@ async def gpt_researcher(input: list[Message], context: Context) -> None:
                 case "report":
                     await context.yield_async(MessagePart(content=data["output"]))
 
-    researcher = GPTResearcher(query=str(input[-1]), report_type="research_report", websocket=CustomLogsHandler())
+    researcher = GPTResearcher(
+        query=str(input[-1]),
+        report_type="research_report",
+        websocket=CustomLogsHandler(),
+    )
     await researcher.conduct_research()
     await researcher.write_report()
 

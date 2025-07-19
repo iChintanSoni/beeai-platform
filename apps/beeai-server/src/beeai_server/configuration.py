@@ -80,6 +80,25 @@ class AuthConfiguration(BaseModel):
         return self
 
 
+class OidcConfiguration(BaseModel):
+    client_id: str | None = None
+    client_secret: Secret[str] | None = Field(default=None)
+    discovery_url: AnyUrl | None = None
+    jwks_uri: AnyUrl | None = None
+    disable_auth: bool = False
+
+    @model_validator(mode="after")
+    def validate_auth(self):
+        if self.disable_auth:
+            logger.critical("OIDC authentication is disabled! This is suitable only for local development.")
+            return self
+        required = ["client_id", "client_secret", "discovery_url", "jwks_url"]
+        for field in required:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} is required for OIDC Authentication if OIDC Auth is enabled")
+        return self
+
+
 class ObjectStorageConfiguration(BaseModel):
     endpoint_url: AnyUrl = AnyUrl("http://seaweedfs-all-in-one:9009")
     access_key_id: Secret[str] = Secret("beeai-admin-user")
@@ -149,6 +168,7 @@ class Configuration(BaseSettings):
     )
 
     auth: AuthConfiguration = Field(default_factory=AuthConfiguration)
+    oidc: OidcConfiguration = Field(default_factory=OidcConfiguration)
     logging: LoggingConfiguration = Field(default_factory=LoggingConfiguration)
     agent_registry: AgentRegistryConfiguration = Field(default_factory=AgentRegistryConfiguration)
     oci_registry: dict[str, OCIRegistryConfiguration] = Field(default_factory=dict)
