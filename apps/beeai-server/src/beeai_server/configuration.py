@@ -66,6 +66,23 @@ class AgentRegistryConfiguration(BaseModel):
     sync_period_cron: str = Field(default="*/5 * * * *")  # every 10 minutes
 
 
+class SSLConfiguration(BaseModel):
+    disable_ssl: bool = False
+    ssl_keyfile: Path | None = None
+    ssl_certfile: Path | None = None
+
+    @model_validator(mode="after")
+    def validate_ssl(self):
+        if self.disable_ssl:
+            logger.critical("SSL is disabled! This is suitable only for local (desktop) deployment.")
+            return self
+        required = ["ssl_keyfile", "ssl_certfile"]
+        for field in required:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} is required for SSL setup if SSL is enabled")
+        return self
+
+
 class AuthConfiguration(BaseModel):
     admin_password: Secret[str] | None = Field(default=None)
     disable_auth: bool = False
@@ -85,11 +102,11 @@ class OidcConfiguration(BaseModel):
     client_secret: Secret[str] | None = Field(default=None)
     discovery_url: AnyUrl | None = None
     jwks_uri: AnyUrl | None = None
-    disable_auth: bool = False
+    disable_oidc: bool = False
 
     @model_validator(mode="after")
     def validate_auth(self):
-        if self.disable_auth:
+        if self.disable_oidc:
             logger.critical("OIDC authentication is disabled! This is suitable only for local development.")
             return self
         required = ["client_id", "client_secret", "discovery_url", "jwks_url"]
@@ -167,6 +184,7 @@ class Configuration(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", env_nested_delimiter="__", extra="ignore"
     )
 
+    ssl: SSLConfiguration = Field(default_factory=SSLConfiguration)
     auth: AuthConfiguration = Field(default_factory=AuthConfiguration)
     oidc: OidcConfiguration = Field(default_factory=OidcConfiguration)
     logging: LoggingConfiguration = Field(default_factory=LoggingConfiguration)

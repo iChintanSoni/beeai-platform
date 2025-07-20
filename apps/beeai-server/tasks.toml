@@ -74,7 +74,7 @@ run = "uv run ruff format --quiet"
 sources = ["src/**/*.py"]
 outputs = { auto = true }
 
-# run
+# run
 
 ["beeai-server:run"]
 depends = ["beeai-server:setup", "beeai-ui:build"]

@@ -9,7 +9,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from beeai_server.configuration import get_configuration
+from beeai_server.configuration import Configuration, get_configuration
 
 # configure logging before importing anything
 from beeai_server.logging_config import configure_logging
@@ -24,9 +24,19 @@ configure_telemetry()
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-SSL_KEYFILE = os.environ.get("SSL_KEYFILE", None)
-SSL_CERTFILE = os.environ.get("SSL_CERTFILE", None)
-JWKS_ENDPOINT = os.environ.get("JWKS_ENDPOINT", None)
+
+configuration: Configuration = get_configuration()
+
+
+SSL_CERTFILE = None
+SSL_KEYFILE = None
+JWKS_URL = None
+
+if not configuration.ssl.disable_ssl:
+    SSL_KEYFILE = configuration.ssl.ssl_keyfile
+    SSL_CERTFILE = configuration.ssl.ssl_certfile
+if not configuration.oidc.disable_oidc:
+    JWKS_URL = configuration.oidc.jwks_uri
 
 
 def serve():
@@ -38,8 +48,8 @@ def serve():
         return
 
     # Download the public jwk key set (jwks)
-    if JWKS_ENDPOINT is not None:
-        os.spawnl(os.P_WAIT, "/usr/bin/wget", "/usr/bin/wget", JWKS_ENDPOINT, "-O", "/jwks/pubkeys.json")
+    if JWKS_URL is not None:
+        os.spawnl(os.P_WAIT, "/usr/bin/wget", "/usr/bin/wget", JWKS_URL, "-O", "/jwks/pubkeys.json")
         logger.info("Public keys downloaded from jwks endpoint OK")
         # extract the ingestion pem from the key
         rc = os.spawnl(
@@ -55,7 +65,7 @@ def serve():
         )
         logger.info("openssl pubout rc: %s", str(rc))
     else:
-        logger.warning("JWKS_ENDPOINT environment variable is None.  OAuth will be disabled")
+        logger.warning("JWKS_URL environment variable is None. OAuth will be disabled")
 
     with socket.socket(socket.AF_INET) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

@@ -53,11 +53,17 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 # helm now allows creating a crds folder which will skip schema validation
-usessl:
+ssl:
   enabled: true
-  IBM_CLIENT_ID: <your_client_id_here>
-  IBM_CLIENT_SECRET: <your_client_secret_here>
-  DISCOVERY_ENDPOINT: <your_oidc_discovery_endpoint_here>
+  ssl_keyfile: ""
+  ssl_certfile: ""
+
+oidc:
+  client_id: "<your_client_id_here>"
+  client_secret: "<your_client_secret_here>"
+  discovery_url: "<your_oidc_discovery_endpoint_here>"
+  jwks_url: "<your_oidc_jwks_url_here>"
+
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: { }
