@@ -15,19 +15,19 @@ from acp_sdk.models import (
     RunResumeResponse,
 )
 from fastapi import Depends
-from fastapi.security import APIKeyCookie
+from fastapi.security import APIKeyCookie, APIKeyHeader
 
 from beeai_server.api.dependencies import AcpProxyServiceDependency, AuthenticatedUserDependency
 from beeai_server.api.schema.acp import AgentReadResponse, AgentsListResponse
-from beeai_server.auth.dependencies import get_current_user
-from beeai_server.auth.models import AuthenticatedUser
+from beeai_server.auth.dependencies import AuthenticationDependency
 from beeai_server.service_layer.services.acp import AcpServerResponse
 
 # api_key_header = APIKeyHeader(name="Authorization")
-api_key_header = APIKeyCookie(name="beeai-platform")
-router = fastapi.APIRouter()
+# api_key_header = APIKeyCookie(name="beeai-platform")
 
-get_authenticated_user = Depends(get_current_user)
+api_key_cookie = APIKeyCookie(name="beeai-platform", auto_error=False)
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
+router = fastapi.APIRouter()
 
 
 @router.get("/ping")
@@ -35,19 +35,20 @@ async def ping() -> PingResponse:
     return PingResponse()
 
 
-@router.get("/agents")
-async def list_agents(
-    acp_service: AcpProxyServiceDependency,
-    user: AuthenticatedUser = get_authenticated_user,
-) -> AgentsListResponse:
-    return AgentsListResponse(agents=await acp_service.list_agents())
-
-
 @router.get("/agents/{name}")
 async def read_agent(
     name: AgentName, acp_service: AcpProxyServiceDependency, api_key: str = Depends(api_key_header)
 ) -> AgentReadResponse:
     return (await acp_service.get_agent_by_name(name)).model_dump()
+
+
+@router.get("/agents")
+async def list_agents(
+    acp_service: AcpProxyServiceDependency,
+    # user: AuthenticatedUser = Depends(get_authenticated_user),
+    user: AuthenticationDependency,
+) -> AgentsListResponse:
+    return AgentsListResponse(agents=await acp_service.list_agents())
 
 
 def _to_fastapi(response: AcpServerResponse):
@@ -60,10 +61,7 @@ def _to_fastapi(response: AcpServerResponse):
 
 @router.post("/runs")
 async def create_run(
-    request: RunCreateRequest,
-    acp_service: AcpProxyServiceDependency,
-    user: AuthenticatedUserDependency,
-    api_key: str = Depends(api_key_header),
+    request: RunCreateRequest, acp_service: AcpProxyServiceDependency, user: AuthenticatedUserDependency
 ) -> RunCreateResponse:
     context = await acp_service.get_proxy_context(agent_name=request.agent_name, user=user)
     response = await acp_service.send_request(context, "POST", "/runs", request)
