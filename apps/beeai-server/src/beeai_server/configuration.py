@@ -101,7 +101,7 @@ class OidcConfiguration(BaseModel):
     client_id: str | None = None
     client_secret: Secret[str] | None = Field(default=None)
     discovery_url: AnyUrl | None = None
-    jwks_uri: AnyUrl | None = None
+    jwks_url: AnyUrl | None = None
     disable_oidc: bool = False
 
     @model_validator(mode="after")

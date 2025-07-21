@@ -19,11 +19,15 @@ from fastapi.security import APIKeyCookie
 
 from beeai_server.api.dependencies import AcpProxyServiceDependency, AuthenticatedUserDependency
 from beeai_server.api.schema.acp import AgentReadResponse, AgentsListResponse
+from beeai_server.auth.dependencies import get_current_user
+from beeai_server.auth.models import AuthenticatedUser
 from beeai_server.service_layer.services.acp import AcpServerResponse
 
 # api_key_header = APIKeyHeader(name="Authorization")
 api_key_header = APIKeyCookie(name="beeai-platform")
 router = fastapi.APIRouter()
+
+get_authenticated_user = Depends(get_current_user)
 
 
 @router.get("/ping")
@@ -33,7 +37,8 @@ async def ping() -> PingResponse:
 
 @router.get("/agents")
 async def list_agents(
-    acp_service: AcpProxyServiceDependency, api_key: str = Depends(api_key_header)
+    acp_service: AcpProxyServiceDependency,
+    user: AuthenticatedUser = get_authenticated_user,
 ) -> AgentsListResponse:
     return AgentsListResponse(agents=await acp_service.list_agents())
 

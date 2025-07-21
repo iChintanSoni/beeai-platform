@@ -19,6 +19,7 @@ from httpx import BasicAuth, HTTPStatusError
 from httpx._types import RequestFiles
 
 from beeai_cli.configuration import Configuration
+from beeai_cli.token_store import load_token
 
 config = Configuration()
 BASE_URL = str(config.host).rstrip("/")
@@ -61,8 +62,20 @@ async def wait_for_api(initial_delay_seconds=5, wait: timedelta = timedelta(minu
 
 
 async def api_request(
-    method: str, path: str, json: dict | None = None, files: RequestFiles | None = None
+    method: str,
+    path: str,
+    json: dict | None = None,
+    files: RequestFiles | None = None,
+    params: dict | None = None,
+    use_auth: bool = True,
 ) -> dict | None:
+    headers = {}
+    if use_auth:
+        token = await load_token()
+        if not token:
+            raise RuntimeError("No token found. Please run `beeai login` first.")
+        headers["Authorization"] = f"Bearer {token}"
+
     """Make an API request to the server."""
     async with httpx.AsyncClient(verify=False) as client:
         response = await client.request(
@@ -70,7 +83,9 @@ async def api_request(
             urllib.parse.urljoin(API_BASE_URL, path),
             json=json,
             files=files,
+            params=params,
             timeout=60,
+            headers=headers,
             auth=BasicAuth("beeai-admin", config.admin_password.get_secret_value()) if config.admin_password else None,
         )
         if response.is_error:
@@ -117,6 +132,12 @@ async def api_stream(
 
 
 @asynccontextmanager
-async def acp_client() -> AsyncIterator[Client]:
-    async with Client(base_url=ACP_URL) as client:
+async def acp_client(use_auth: bool = True) -> AsyncIterator[Client]:
+    headers = {}
+    if use_auth:
+        token = await load_token()
+        if not token:
+            raise RuntimeError("No token found. Please run `beeai login` first.")
+        headers["Authorization"] = f"Bearer {token}"
+    async with Client(base_url=ACP_URL, verify=False, headers=headers) as client:
         yield client

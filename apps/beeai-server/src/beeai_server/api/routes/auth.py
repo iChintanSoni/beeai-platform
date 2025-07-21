@@ -27,7 +27,7 @@ def build_oauth(configuration: ConfigurationDependency):
         client_id=configuration.oidc.client_id,
         client_secret=configuration.oidc.client_secret._secret_value,
         server_metadata_url=str(configuration.oidc.discovery_url),
-        jwks_uri=str(configuration.oidc.jwks_url),
+        jwks_url=str(configuration.oidc.jwks_url),
         client_kwargs={"scope": "openid email profile"},
     )
     return oauth
@@ -52,9 +52,9 @@ async def login(
 
     if cli:
         # Inject state manually in redirect URL, using login_id as state
-        response = await oauth.oidc_provider.authorize_redirect(request, redirect_uri, state=login_id)
+        response = await oauth.oidc_auth_provider.authorize_redirect(request, redirect_uri, state=login_id)
         authorization_url = response.headers.get("location")
-        key = f"_state_oidc_provider_{login_id}"
+        key = f"_state_oidc_auth_provider_{login_id}"
         oidc_state_dict = request.session.get(key)
         pending_states[login_id] = {
             "login_id": login_id,
@@ -65,7 +65,7 @@ async def login(
     # UI clients - use session (cookie-backed)
     request.session["is_cli"] = False
     request.session["login_id"] = login_id
-    return await oauth.oidc_provider.authorize_redirect(request, redirect_uri)
+    return await oauth.oidc_auth_provider.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/auth/callback")
@@ -80,7 +80,7 @@ async def auth_callback(request: Request, configuration: ConfigurationDependency
     if state and state in pending_states:
         stored_state = pending_states.pop(state)
         login_id = stored_state["login_id"]
-        key = f"_state_oidc_provider_{state}"
+        key = f"_state_oidc_auth_provider_{state}"
         request.session[key] = stored_state["oidc_state"]
         is_cli = True
     else:
@@ -88,7 +88,7 @@ async def auth_callback(request: Request, configuration: ConfigurationDependency
         is_cli = request.session.get("is_cli", False)
 
     try:
-        token = await oauth.oidc_provider.authorize_access_token(request)
+        token = await oauth.oidc_auth_provider.authorize_access_token(request)
     except Exception as err:
         logger.debug("Error running authorize_access_token %s", str(err))
         return RedirectResponse(SLASH_LOGIN)

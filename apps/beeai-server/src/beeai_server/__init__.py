@@ -36,7 +36,7 @@ if not configuration.ssl.disable_ssl:
     SSL_KEYFILE = configuration.ssl.ssl_keyfile
     SSL_CERTFILE = configuration.ssl.ssl_certfile
 if not configuration.oidc.disable_oidc:
-    JWKS_URL = configuration.oidc.jwks_uri
+    JWKS_URL = configuration.oidc.jwks_url
 
 
 def serve():

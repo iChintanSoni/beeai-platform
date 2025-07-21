@@ -55,8 +55,8 @@ serviceAccount:
 # helm now allows creating a crds folder which will skip schema validation
 ssl:
   enabled: true
-  ssl_keyfile: ""
-  ssl_certfile: ""
+  ssl_keyfile: "/etc/config/private.pem"
+  ssl_certfile: "/etc/config/public.pem"
 
 oidc:
   client_id: "<your_client_id_here>"
@@ -119,16 +119,16 @@ resources:
 #   cpu: 100m
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-livenessProbe:
-  httpGet:
-    path: /api/v1/acp/ping
-    scheme: HTTPS
-    port: http
-readinessProbe:
-  httpGet:
-    path: /api/v1/acp/ping
-    scheme: HTTPS
-    port: http
+# livenessProbe:
+#   httpGet:
+#     path: /api/v1/acp/ping
+#     scheme: HTTPS
+#     port: http
+# readinessProbe:
+#   httpGet:
+#     path: /api/v1/acp/ping
+#     scheme: HTTPS
+#     port: http
 
 # Additional volumes on the output Deployment definition.
 volumes:
