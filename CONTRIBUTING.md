@@ -74,6 +74,30 @@ eval "$(mise run beeai-platform:shell)"
 deactivate
 ```
 
+### Istio 
+
+Add an entry to /etc/hosts on your local system:
+```
+# Added by BEEAI-PLATFORM
+127.0.0.1        beeai-platform.api.testing
+```
+
+Update OAuth credentials in helm/values.yaml under:
+```YAML
+usessl:
+  enabled: true
+  IBM_CLIENT_ID: <your_client_id_here>
+  IBM_CLIENT_SECRET: <your_client_secret_here>
+  DISCOVERY_ENDPOINT: <your_oidc_discovery_endpoint_here>
+```
+
+
+This branch enables istio by default, and creates a gateway & routes for `https://beeai-platform.api.testing:8336/` .  The intent being that tokens returned by OAuth routes are receieved in the browser over HTTPS rather than plain text HTTP to prevent unauthorized use of tokens.
+
+The default namespace is labeled istio.io/dataplane-mode=ambient so all intra pod trafic is via ztunnel with the exception of the beeai-platform pod due to it's use of the hostNetwork (istio can not bring a hostNetwork enabled pod into the mesh).
+
+The first set of routes that have been enabled for token checking are the acp routes.   This is not yet fully functional since the ACP TypeScript client does not support supplying cookies/headers in constructor.  This blocks passing the token to the platform from the UI acp/typescript/src/client/client.ts  (Related issue: https://github.com/i-am-bee/acp/issues/140).  The python constructor does  ( see acp/python/src/acp_sdk/client/client.py ) so the cli and platform are OK.
+
 ### Running and debugging individual components
 
 It's desirable to run and debug (i.e. in an IDE) individual components against the full stack (PostgreSQL,

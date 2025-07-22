@@ -19,6 +19,7 @@ from beeai_server.telemetry import configure_telemetry  # noqa: E402
 configure_telemetry()
 
 logger = logging.getLogger(__name__)
+JWKS_ENDPOINT = os.environ.get("JWKS_ENDPOINT", None)
 
 
 def serve():
@@ -28,6 +29,25 @@ def serve():
     if sys.platform == "win32":
         logger.error("Native windows is not supported, use WSL")
         return
+
+    if JWKS_ENDPOINT is not None:
+        os.spawnl(os.P_WAIT, "/usr/bin/wget", "/usr/bin/wget", JWKS_ENDPOINT, "-O", "/jwks/pubkeys.json")
+        logger.info("Public keys downloaded from jwks endpoint OK")
+        # extract the ingestion pem from the key
+        rc = os.spawnl(
+            os.P_WAIT,
+            "/usr/bin/openssl",
+            "/usr/bin/openssl",
+            "rsa",
+            "--in",
+            "/etc/config/ingestion.key",
+            "--pubout",
+            "-out",
+            "/jwks/ingestion.pem",
+        )
+        logger.info("openssl pubout rc: %s", str(rc))
+    else:
+        logger.warning("JWKS_ENDPOINT environment variable is None.  OAuth will be disabled")
 
     with socket.socket(socket.AF_INET) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
