@@ -8,12 +8,11 @@ from beeai_framework.adapters.openai import OpenAIChatModel
 from beeai_framework.agents.experimental import RequirementAgent
 from beeai_framework.agents.experimental.utils._tool import FinalAnswerTool
 from beeai_framework.agents.experimental.events import (
-    RequirementAgentStartEvent,
     RequirementAgentSuccessEvent,
 )
 import beeai_framework.backend
 from beeai_framework.middleware.trajectory import GlobalTrajectoryMiddleware
-from chat.tools.files.file_generator import FileGeneratorTool
+from chat.tools.files.file_generator import FileGeneratorTool, FileGeneratorToolOutput
 from chat.tools.files.file_reader import create_file_reader_tool_class
 from chat.tools.files.utils import extract_files
 from beeai_framework.tools import Tool
@@ -29,7 +28,6 @@ from chat.tools.general.clarification import (
 from chat.tools.general.current_time import CurrentTimeTool
 
 
-# os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:6006")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
 import logging
@@ -39,6 +37,7 @@ from textwrap import dedent
 import beeai_framework
 from acp_sdk import (
     AnyModel,
+    Artifact,
     Message,
     Metadata,
     Link,
@@ -83,8 +82,16 @@ def to_framework_message(role: str, content: str) -> beeai_framework.backend.Mes
             beeai_ui=PlatformUIAnnotation(
                 ui_type=PlatformUIType.CHAT,
                 user_greeting="How can I help you?",
-                display_name="Chat NEW",
+                display_name="Chat",
                 tools=[
+                    AgentToolInfo(
+                        name="Act",
+                        description="Allows the agent to take actions (use tools) based on user input. Enforce the agent to think before acting.",
+                    ),
+                    AgentToolInfo(
+                        name="Clarification",
+                        description="Provides a way to ask user for clarification.",
+                    ),
                     AgentToolInfo(
                         name="Web Search (DuckDuckGo)",
                         description="Retrieves real-time search results.",
@@ -96,6 +103,18 @@ def to_framework_message(role: str, content: str) -> beeai_framework.backend.Mes
                     AgentToolInfo(
                         name="Weather Information (OpenMeteo)",
                         description="Provides real-time weather updates.",
+                    ),
+                    AgentToolInfo(
+                        name="File Generator",
+                        description="Generates files based on user input.",
+                    ),
+                    AgentToolInfo(
+                        name="File Reader",
+                        description="Reads attached files and returns their content.",
+                    ),
+                    AgentToolInfo(
+                        name="Current Time",
+                        description="Provides the current time.",
                     ),
                 ],
             ),
@@ -128,6 +147,7 @@ def to_framework_message(role: str, content: str) -> beeai_framework.backend.Mes
             - **Web Search (DuckDuckGo)** – Retrieves real-time search results.
             - **Wikipedia Search** – Fetches summaries from Wikipedia.
             - **Weather Information (OpenMeteo)** – Provides real-time weather updates.
+            - **File Handling** – Can read and generate files, allowing users to interact with file content directly.
 
             The agent also includes an **event-based streaming mechanism**, allowing it to send partial responses
             to clients as they are generated.
@@ -141,7 +161,7 @@ def to_framework_message(role: str, content: str) -> beeai_framework.backend.Mes
         ),
     )
 )
-async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
+async def chat(input: list[Message], context: Context) -> AsyncGenerator:
     """
     The agent is an AI-powered conversational system with memory, supporting real-time search, Wikipedia lookups,
     and weather updates through integrated tools.
@@ -164,7 +184,6 @@ async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
     ]
 
     requirements = [
-        # ConditionalRequirement(ActTool, force_at_step=1, consecutive_allowed=False),
         ActAlwaysFirstRequirement(),
     ]
 
@@ -202,7 +221,7 @@ async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
     async for event, meta in agent.run():
         if not isinstance(
             event,
-            RequirementAgentStartEvent | RequirementAgentSuccessEvent,
+            RequirementAgentSuccessEvent,
         ):
             continue
 
@@ -216,6 +235,14 @@ async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
             )
             if meta.trace is not None:
                 yield {f"tool_{meta.trace.run_id}": str(last_tool_call)}
+            if isinstance(last_step.output, FileGeneratorToolOutput):
+                result = last_step.output.result
+                for file_info in result.files:
+                    yield Artifact(
+                        name=file_info.display_filename,
+                        content_type=file_info.content_type,
+                        content_url=file_info.url,
+                    )
 
         if event.state.answer is not None:
             yield event.state.answer.text
