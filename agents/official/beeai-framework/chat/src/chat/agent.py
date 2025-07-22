@@ -3,7 +3,6 @@
 
 import os
 from beeai_framework.adapters.openai import OpenAIChatModel
-from chat.helpers.local_settings import LocalSettings
 
 
 from beeai_framework.agents.experimental import RequirementAgent
@@ -148,16 +147,6 @@ async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
     and weather updates through integrated tools.
     """
 
-    OpenAIChatModel.tool_choice_support = {"none", "single", "auto"}
-    llm = OpenAIChatModel(
-        model_id=os.getenv("LLM_MODEL", "llama3.1"),
-        api_key=os.getenv("LLM_API_KEY", "dummy"),
-        base_url=os.getenv("LLM_API_BASE", "http://localhost:11434/v1"),
-        parameters=ChatModelParameters(
-            temperature=0.0,
-        ),
-    )
-
     history = [message async for message in context.session.load_history()]
     extracted_files = await extract_files(history=history, incoming_messages=input)
 
@@ -185,8 +174,6 @@ async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
         file_reader_tool = file_reader_tool_class()
         tools.append(file_reader_tool)
 
-    local_settings = LocalSettings()
-    OpenAIChatModel.tool_choice_support = {"none", "single", "auto"}
     llm = OpenAIChatModel(
         model_id=os.getenv("LLM_MODEL", "llama3.1"),
         api_key=os.getenv("LLM_API_KEY", "dummy"),
@@ -213,9 +200,11 @@ async def chat_new(input: list[Message], context: Context) -> AsyncGenerator:
     await agent.memory.add_many(framework_messages)
 
     async for event, meta in agent.run():
-        assert isinstance(
-            event, RequirementAgentStartEvent | RequirementAgentSuccessEvent
-        )
+        if not isinstance(
+            event,
+            RequirementAgentStartEvent | RequirementAgentSuccessEvent,
+        ):
+            continue
 
         last_step = event.state.steps[-1] if event.state.steps else None
         if last_step and last_step.tool is not None:
