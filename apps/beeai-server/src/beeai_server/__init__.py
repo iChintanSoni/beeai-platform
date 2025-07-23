@@ -27,14 +27,8 @@ logger = logging.getLogger(__name__)
 
 configuration: Configuration = get_configuration()
 
-
-SSL_CERTFILE = None
-SSL_KEYFILE = None
 JWKS_URL = None
 
-if not configuration.ssl.disable_ssl:
-    SSL_KEYFILE = configuration.ssl.ssl_keyfile
-    SSL_CERTFILE = configuration.ssl.ssl_certfile
 if not configuration.oidc.disable_oidc:
     JWKS_URL = configuration.oidc.jwks_url
 
@@ -75,38 +69,38 @@ def serve():
             logger.error(f"Port {config.port} already in use, is another instance of beeai-server running?")
             return
 
-    params = [
-        sys.executable,
-        "-m",
-        "uvicorn",
-        "beeai_server.application:app",
-        f"--host={host}",
-        f"--port={config.port}",
-        "--timeout-keep-alive=2",
-        "--timeout-graceful-shutdown=2",
-    ]
+    # params = [
+    #     sys.executable,
+    #     "-m",
+    #     "uvicorn",
+    #     "beeai_server.application:app",
+    #     f"--host={host}",
+    #     f"--port={config.port}",
+    #     "--timeout-keep-alive=2",
+    #     "--timeout-graceful-shutdown=2",
+    # ]
 
-    if SSL_KEYFILE is not None and SSL_CERTFILE is not None:
-        params.append(f"--ssl-keyfile={SSL_KEYFILE}")
-        params.append(f"--ssl-certfile={SSL_CERTFILE}")
+    # if SSL_KEYFILE is not None and SSL_CERTFILE is not None:
+    #     params.append(f"--ssl-keyfile={SSL_KEYFILE}")
+    #     params.append(f"--ssl-certfile={SSL_CERTFILE}")
 
-    os.execv(
-        sys.executable,
-        params,
-    )
     # os.execv(
     #     sys.executable,
-    #     [
-    #         sys.executable,
-    #         "-m",
-    #         "uvicorn",
-    #         "beeai_server.application:app",
-    #         f"--host={host}",
-    #         f"--port={config.port}",
-    #         "--timeout-keep-alive=2",
-    #         "--timeout-graceful-shutdown=2",
-    #     ],
+    #     params,
     # )
+    os.execv(
+        sys.executable,
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "beeai_server.application:app",
+            f"--host={host}",
+            f"--port={config.port}",
+            "--timeout-keep-alive=2",
+            "--timeout-graceful-shutdown=2",
+        ],
+    )
 
 
 def migrate():

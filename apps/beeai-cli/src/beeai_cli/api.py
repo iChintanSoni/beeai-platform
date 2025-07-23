@@ -70,14 +70,14 @@ async def api_request(
     use_auth: bool = True,
 ) -> dict | None:
     headers = {}
-    if use_auth:
+    if use_auth and not config.auth_disabled:
         token = await load_token()
         if not token:
             raise RuntimeError("No token found. Please run `beeai login` first.")
         headers["Authorization"] = f"Bearer {token}"
 
     """Make an API request to the server."""
-    async with httpx.AsyncClient(verify=False) as client:
+    async with httpx.AsyncClient() as client:
         response = await client.request(
             method,
             urllib.parse.urljoin(API_BASE_URL, path),
@@ -109,7 +109,7 @@ async def api_stream(
     import json as jsonlib
 
     async with (
-        httpx.AsyncClient(verify=False) as client,
+        httpx.AsyncClient() as client,
         client.stream(
             method,
             urllib.parse.urljoin(API_BASE_URL, path),
@@ -134,10 +134,10 @@ async def api_stream(
 @asynccontextmanager
 async def acp_client(use_auth: bool = True) -> AsyncIterator[Client]:
     headers = {}
-    if use_auth:
+    if use_auth and not config.auth_disabled:
         token = await load_token()
         if not token:
             raise RuntimeError("No token found. Please run `beeai login` first.")
         headers["Authorization"] = f"Bearer {token}"
-    async with Client(base_url=ACP_URL, verify=False, headers=headers) as client:
+    async with Client(base_url=ACP_URL, headers=headers) as client:
         yield client

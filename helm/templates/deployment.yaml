@@ -56,8 +56,6 @@ spec:
           env:
             - name: AUTH__DISABLE_AUTH
               value: "true"
-            - name: SSL__DISABLE_SSL
-              value: "true"
             - name: OIDC__DISABLE_OIDC
               value: "true"
             - name: LOGGING__LEVEL_SQLALCHEMY
@@ -85,8 +83,6 @@ spec:
           env:
             - name: AUTH__DISABLE_AUTH
               value: "true"
-            - name: SSL__DISABLE_SSL
-              value: "true"
             - name: OIDC__DISABLE_OIDC
               value: "true"
             - name: LOGGING__LEVEL_SQLALCHEMY
@@ -112,8 +108,6 @@ spec:
           {{- end }}
           env:
             - name: AUTH__DISABLE_AUTH
-              value: "true"
-            - name: SSL__DISABLE_SSL
               value: "true"
             - name: OIDC__DISABLE_OIDC
               value: "true"
@@ -197,16 +191,6 @@ spec:
                 secretKeyRef:
                   key: adminPassword
                   name: beeai-platform-secret
-            {{- if not .Values.ssl.enabled }}
-            - name: SSL__DISABLE_SSL
-              value: "true"
-            {{- end}}
-            {{- if .Values.ssl.enabled }}
-            - name: SSL__SSL_KEYFILE
-              value: {{ required "Missing required value: ssl.ssl_keyfile" .Values.ssl.ssl_keyfile | quote }}
-            - name: SSL__SSL_CERTFILE
-              value: {{ required "Missing required value: ssl.ssl_certfile" .Values.ssl.ssl_certfile | quote }}
-            {{- end}}
             {{- if not .Values.oidc.enabled }}
             - name: OIDC__DISABLE_OIDC
               value: "true"

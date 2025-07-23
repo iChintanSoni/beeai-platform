@@ -24,8 +24,6 @@ from kink import Container, di, inject
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from starlette.exceptions import HTTPException as StarletteHttpException
 from starlette.middleware import Middleware
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse
@@ -40,7 +38,6 @@ from beeai_server.api.routes.llm import router as llm_router
 from beeai_server.api.routes.provider import router as provider_router
 from beeai_server.api.routes.ui import router as ui_router
 from beeai_server.api.routes.vector_stores import router as vector_stores_router
-from beeai_server.auth.backend import JwtAuthBackend, on_auth_error
 from beeai_server.bootstrap import bootstrap_dependencies_sync
 from beeai_server.configuration import Configuration
 from beeai_server.exceptions import (
@@ -54,11 +51,7 @@ from beeai_server.utils.fastapi import NoCacheStaticFiles
 
 logger = logging.getLogger(__name__)
 SESSION_KEY = secrets.token_hex(16)
-middleware = [
-    Middleware(AuthenticationMiddleware, backend=JwtAuthBackend(), on_error=on_auth_error),
-    Middleware(SessionMiddleware, secret_key=SESSION_KEY, https_only=True, session_cookie="session"),
-    Middleware(HTTPSRedirectMiddleware),
-]
+middleware = [Middleware(SessionMiddleware, secret_key=SESSION_KEY, https_only=True, session_cookie="session")]
 
 
 def extract_messages(exc):
@@ -186,7 +179,7 @@ def app(*, dependency_overrides: Container | None = None) -> FastAPI:
         default_response_class=ORJSONResponse,  # better performance then default + handle NaN floats
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
-        servers=[{"url": f"https://localhost:{configuration.port}"}],
+        servers=[{"url": f"http://localhost:{configuration.port}"}],
         middleware=middleware,
     )
 
