@@ -2,6 +2,7 @@
  * Copyright 2025 © BeeAI a Series of LF Projects, LLC
  * SPDX-License-Identifier: Apache-2.0
  */
+'use client';
 
 import { ArrowDown } from '@carbon/icons-react';
 import { IconButton } from '@carbon/react';
@@ -9,12 +10,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Container } from '#components/layouts/Container.tsx';
 
+import { FileUpload } from '../../files/components/FileUpload';
+import { useMessages } from '../../messages/contexts';
 import { NewSessionButton } from '../components/NewSessionButton';
 import { StatusBar } from '../components/StatusBar';
 import { useAgentRun } from '../contexts/agent-run';
 import { useAgentStatus } from '../contexts/agent-status';
-import { useMessages } from '../contexts/messages';
-import { FileUpload } from '../files/components/FileUpload';
 import { ChatInput } from './ChatInput';
 import classes from './ChatMessagesView.module.scss';
 import { Message } from './Message';
@@ -80,7 +81,7 @@ export function ChatMessagesView() {
           <Container size="sm" asChild>
             <ol className={classes.messages} aria-label="messages">
               {messages.map((message) => (
-                <Message key={message.key} message={message} />
+                <Message key={message.id} message={message} />
               ))}
             </ol>
           </Container>

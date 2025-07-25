@@ -2,17 +2,19 @@
  * Copyright 2025 © BeeAI a Series of LF Projects, LLC
  * SPDX-License-Identifier: Apache-2.0
  */
+'use client';
 
 import { PlayFilledAlt } from '@carbon/icons-react';
 import { Button } from '@carbon/react';
 import { useForm } from 'react-hook-form';
 
+import { useFileUpload } from '#modules/files/contexts/index.ts';
+
 import { InputBar } from '../components/InputBar';
 import { useAgentRun } from '../contexts/agent-run';
-import { useFileUpload } from '../files/contexts';
 
 export function HandsOffInput() {
-  const { isPending, run } = useAgentRun();
+  const { agent, isPending, run } = useAgentRun();
   const { isPending: isFileUploadPending } = useFileUpload();
 
   const form = useForm<FormValues>({
@@ -24,10 +26,14 @@ export function HandsOffInput() {
 
   const inputValue = watch('input');
 
+  const {
+    ui: { prompt_suggestions },
+  } = agent;
   const isSubmitDisabled = isPending || isFileUploadPending || !inputValue;
 
   return (
     <InputBar
+      promptSuggestions={prompt_suggestions}
       onSubmit={() => {
         handleSubmit(async ({ input }) => {
           await run(input);

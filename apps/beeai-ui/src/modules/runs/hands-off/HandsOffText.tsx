@@ -4,27 +4,34 @@
  */
 
 import { useAutoScroll } from '#hooks/useAutoScroll.ts';
+import type { UIAgentMessage } from '#modules/messages/types.ts';
+import { checkMessageError, getMessageContent, getMessageSources } from '#modules/messages/utils.ts';
+import { MessageSources } from '#modules/sources/components/MessageSources.tsx';
 
-import type { AgentMessage } from '../chat/types';
+import { MessageFiles } from '../../files/components/MessageFiles';
 import { AgentOutputBox } from '../components/AgentOutputBox';
+import { MessageError } from '../components/MessageError';
 import { useAgentRun } from '../contexts/agent-run';
-import { MessageFiles } from '../files/components/MessageFiles';
-import { MessageSources } from '../sources/components/MessageSources';
 
 interface Props {
-  message: AgentMessage;
+  message: UIAgentMessage;
   className?: string;
 }
 
 export function HandsOffText({ message, className }: Props) {
   const { agent, isPending } = useAgentRun();
-  const output = message.content;
-  const { ref: autoScrollRef } = useAutoScroll([output]);
-  const sources = message.sources ?? [];
 
-  return output ? (
+  const content = getMessageContent(message);
+  const sources = getMessageSources(message);
+  const isError = checkMessageError(message);
+
+  const { ref: autoScrollRef } = useAutoScroll([content]);
+
+  return content || isError ? (
     <div className={className}>
-      <AgentOutputBox sources={sources} text={output} isPending={isPending} downloadFileName={`${agent.name}-output`}>
+      <AgentOutputBox sources={sources} text={content} isPending={isPending} downloadFileName={`${agent.name}-output`}>
+        {isError && <MessageError message={message} />}
+
         <MessageFiles message={message} />
 
         <MessageSources message={message} />

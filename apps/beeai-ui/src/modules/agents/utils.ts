@@ -5,32 +5,25 @@
 
 import uniq from 'lodash/uniq';
 
-import type { components } from '#api/schema.js';
+import type { Provider } from '#modules/providers/api/types.ts';
 import { SupportedUis } from '#modules/runs/constants.ts';
 import { compareStrings, isNotNull } from '#utils/helpers.ts';
 
-import type { UiType } from './api/types';
-import { type Agent, LinkType } from './api/types';
+import { type AgentExtension, AgentLinkType, type UiExtension, type UIExtensionParams } from './api/types';
+import { type Agent, AGENT_EXTENSION_UI_KEY } from './api/types';
 
-export const getAgentsProgrammingLanguages = (agents: Agent[] | undefined) =>
-  uniq(
+export const getAgentsProgrammingLanguages = (agents: Agent[] | undefined) => {
+  return uniq(
     agents
-      ?.map(({ metadata: { programming_language } }) => programming_language)
+      ?.map(({ ui }) => ui.programming_language)
       .filter(isNotNull)
       .flat(),
   );
-
-export function getAgentStatusMetadata<K extends string>({ agent, keys }: { agent: Agent; keys: K[] }) {
-  const status = agent.metadata.status as Record<string, unknown> | undefined;
-
-  return Object.fromEntries(
-    keys.map((key) => [key, typeof status?.[key] === 'string' ? (status[key] as string) : null]),
-  ) as Record<K, string | null>;
-}
+};
 
 export function getAgentSourceCodeUrl(agent: Agent) {
-  const { links } = agent.metadata;
-  const link = links?.find(({ type }) => type === LinkType.SourceCode);
+  const { links } = agent.ui;
+  const link = links?.find(({ type }) => type === AgentLinkType.SourceCode);
 
   return link?.url;
 }
@@ -40,41 +33,42 @@ export function sortAgentsByName(a: Agent, b: Agent) {
 }
 
 export function isAgentUiSupported(agent: Agent) {
-  const { ui_type } = getAgentUiMetadata(agent);
+  const ui_type = agent.ui?.ui_type;
 
-  return ui_type && SupportedUis.includes(ui_type as UiType);
+  return ui_type && SupportedUis.includes(ui_type);
 }
 
-type AgentLinkType = components['schemas']['LinkType'];
-
 export function getAvailableAgentLinkUrl<T extends AgentLinkType | AgentLinkType[]>(
-  metadata: components['schemas']['Metadata'],
+  links: UIExtensionParams['links'],
   type: T,
 ): string | undefined {
   const typesArray = Array.isArray(type) ? type : [type];
 
-  let url: string | undefined;
   for (const type of typesArray) {
-    url = metadata.links?.find((link) => link.type === type)?.url;
+    const url = links?.find((link) => link.type === type)?.url;
     if (url) {
-      break;
+      return url;
     }
   }
 
-  return url;
+  return undefined;
 }
 
-export function getAgentUiMetadata(agent: Agent) {
-  const { name, metadata } = agent;
-  const beeai_ui = metadata.annotations?.beeai_ui;
+function isAgentUiExtension(extension: AgentExtension): extension is UiExtension {
+  return extension.uri === AGENT_EXTENSION_UI_KEY;
+}
+
+export function buildAgent(provider: Provider): Agent {
+  const { agent_card, ...providerData } = provider;
+
+  const ui = agent_card.capabilities.extensions?.find(isAgentUiExtension)?.params ?? null;
 
   return {
-    ...beeai_ui,
-    // TODO: Temporary fallback until agents with new metadata are released in the registry.
-    ui_type: beeai_ui?.ui_type ?? ((metadata?.ui as Record<string, unknown> | undefined)?.type as UiType | undefined),
-    user_greeting:
-      beeai_ui?.user_greeting ??
-      ((metadata?.ui as Record<string, unknown> | undefined)?.user_greeting as string | null | undefined),
-    display_name: beeai_ui?.display_name ?? name,
+    ...agent_card,
+    provider: { ...providerData, metadata: agent_card.provider },
+    ui: {
+      ...ui,
+      display_name: ui?.display_name ?? agent_card.name,
+    },
   };
 }

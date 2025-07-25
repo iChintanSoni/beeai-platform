@@ -8,15 +8,14 @@
 import { spacing } from '@carbon/layout';
 import { moderate01 } from '@carbon/motion';
 import { ButtonSkeleton, SkeletonText } from '@carbon/react';
+import type { Agent } from '@i-am-bee/beeai-ui';
 import {
-  Agent,
   AgentMetadataView,
   AgentTags,
   BeeBadge,
   commands,
   CopySnippet,
   fadeProps,
-  getAgentUiMetadata,
   MarkdownContent,
   TagsList,
 } from '@i-am-bee/beeai-ui';
@@ -36,14 +35,13 @@ export function AgentDetail({ agent, buttons }: Props) {
   const {
     name,
     description,
-    metadata: { documentation },
+    ui: { documentation },
   } = agent;
-  const { display_name } = getAgentUiMetadata(agent);
 
   return (
     <div className={classes.root}>
       <motion.header {...fadeInPropsWithMarginShift({ start: { from: spacing[4] } })} className={classes.header}>
-        <h1 className={classes.name}>{display_name}</h1>
+        <h1 className={classes.name}>{agent.ui.display_name}</h1>
 
         <BeeBadge agent={agent} size="lg" />
       </motion.header>

@@ -5,42 +5,47 @@
 
 import clsx from 'clsx';
 
-import { getErrorMessage } from '#api/utils.ts';
-import { ErrorMessage } from '#components/ErrorMessage/ErrorMessage.tsx';
 import { Spinner } from '#components/Spinner/Spinner.tsx';
-import { getAgentUiMetadata } from '#modules/agents/utils.ts';
+import type { UIMessage } from '#modules/messages/types.ts';
+import { UIMessageStatus } from '#modules/messages/types.ts';
+import {
+  checkMessageError,
+  getMessageContent,
+  getMessageSources,
+  isAgentMessage,
+  isUserMessage,
+} from '#modules/messages/utils.ts';
+import { MessageSources } from '#modules/sources/components/MessageSources.tsx';
 
+import { MessageFiles } from '../../files/components/MessageFiles';
+import { MessageTrajectories } from '../../trajectories/components/MessageTrajectories';
 import { AgentIcon } from '../components/AgentIcon';
 import { MessageContent } from '../components/MessageContent';
+import { MessageError } from '../components/MessageError';
 import { useAgentRun } from '../contexts/agent-run';
-import { MessageFiles } from '../files/components/MessageFiles';
-import { MessageSources } from '../sources/components/MessageSources';
-import { MessageTrajectories } from '../trajectory/components/MessageTrajectories';
-import { isAgentMessage, isUserMessage } from '../utils';
 import classes from './Message.module.scss';
-import { type ChatMessage, MessageStatus } from './types';
 import { UserIcon } from './UserIcon';
 
 interface Props {
-  message: ChatMessage;
+  message: UIMessage;
 }
 
 export function Message({ message }: Props) {
   const { agent } = useAgentRun();
-  const { content, error } = message;
-  const { display_name } = getAgentUiMetadata(agent);
+
+  const content = getMessageContent(message);
+  const sources = getMessageSources(message);
 
   const isUser = isUserMessage(message);
   const isAgent = isAgentMessage(message);
-  const isPending = isAgent && message.status === MessageStatus.InProgress && !content;
-  const isError = isAgent && (message.status === MessageStatus.Failed || message.status === MessageStatus.Aborted);
-  const isFailed = isAgent && message.status === MessageStatus.Failed;
+  const isPending = isAgent && message.status === UIMessageStatus.InProgress && !content;
+  const isError = isAgent && checkMessageError(message);
 
   return (
     <li className={clsx(classes.root)}>
       <div className={classes.sender}>
         <div className={classes.senderIcon}>{isUser ? <UserIcon /> : <AgentIcon />}</div>
-        <div className={classes.senderName}>{isUser ? 'User' : display_name}</div>
+        <div className={classes.senderName}>{isUser ? 'User' : agent.ui.display_name}</div>
       </div>
 
       <div className={classes.body}>
@@ -49,14 +54,10 @@ export function Message({ message }: Props) {
         ) : (
           <>
             <div className={clsx(classes.content, { [classes.isUser]: isUser })}>
-              <MessageContent message={message} />
+              <MessageContent content={content} sources={sources} />
             </div>
-            {isError && (
-              <ErrorMessage
-                title={isFailed ? 'Failed to generate an agent message.' : 'Message generation has been cancelled.'}
-                subtitle={getErrorMessage(error)}
-              />
-            )}
+
+            {isError && <MessageError message={message} />}
           </>
         )}
 

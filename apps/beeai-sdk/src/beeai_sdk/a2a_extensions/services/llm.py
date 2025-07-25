@@ -1,78 +1,68 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-import typing
+from __future__ import annotations
 
 import pydantic
 
-
-class LlmModelFeatures(pydantic.BaseModel):
-    streaming: bool = False
-    """Model supports streaming responses (`stream`, `stream_options`)"""
-
-    context_length: int | None = None
-    """Supported context length in tokens"""
-
-    tool_calling: bool = False
-    """Supports tool calling (`tool`, `tool_choice`)"""
-
-    tool_choice_support: tuple[typing.Literal["required", "none", "single", "auto"], ...] = ()
-    """Supported values for `tool_choice`, with `"single"` meaning a specified tool."""
-
-    response_format: tuple[typing.Literal["text", "json_object", "json_schema"], ...] = ()
-    """Supposted values for `response_format`"""
-
-    expertise: tuple[
-        typing.Literal[
-            "area.programming",
-            "area.summarization",
-            "area.translation",
-            # ...
-            "language.en",
-            "language.cs",
-            "language.de",
-            # ...
-        ],
-        ...,
-    ] = ()
-    """Indicates areas, languages, tasks etc. the model is specialized in."""
+from beeai_sdk.a2a_extensions.base_extension import BaseExtension
 
 
-class LlmExtensionParams(pydantic.BaseModel):
-    model_requests: dict[str, LlmModelFeatures]
-
-
-class ProvidedModel(pydantic.BaseModel):
+class LLMFulfillment(pydantic.BaseModel):
     identifier: str | None = None
     """
-    Name of the model for identification and optimization purposes.
-    Should be the Ollama model name if available (ex. "granite3.3:8b"), or OpenRouter model id under the primary provider (ex. "openai/gpt-4o").
-    (This does not necessarily mean that the model is provided by Ollama or OpenRouter, it is just used for model identification.)
+    Name of the model for identification and optimization purposes. Usually corresponds to LiteLLM identifiers.
+    Should be the name of the provider slash name of the model as it appears in the API.
+    Examples: openai/gpt-4o, watsonx/ibm/granite-13b-chat-v2, ollama/mistral-small:22b
     """
 
-    features: LlmModelFeatures | None = None
-    """Features that the model supports. This is useful when the agent can optionally use a feature but has a fallback."""
-
     api_base: str
+    """
+    Base URL for an OpenAI-compatible API. It should provide at least /v1/chat/completions
+    """
+
     api_key: str
+    """
+    API key to attach as a `Authorization: Bearer $api_key` header.
+    """
+
     api_model: str
+    """
+    Model name to use with the /v1/chat/completions API.
+    """
 
 
-class ClientMessageMetadata(pydantic.BaseModel):
-    provided_models: dict[str, ProvidedModel] = {}
-    """Provided models corresponding to the model requests."""
-
-
-class LlmModelRequest(pydantic.BaseModel):
+class LLMDemand(pydantic.BaseModel):
     description: str | None = None
-    """Free-form description of how the model will be used."""
-
-    features: LlmModelFeatures | None = None
-    """Requested minimal features of the model."""
+    """
+    Short description of how the model will be used, if multiple are requested.
+    Intended to be shown in the UI alongside a model picker dropdown.
+    """
 
     suggested: tuple[str, ...] = ()
     """
-    Model ids that should work best with this agent.
-    Should be the Ollama model name if available (ex. "granite3.3:8b"), or OpenRouter model id under the primary provider (ex. "openai/gpt-4o").
-    (This does not necessarily mean that the model should be provided by Ollama or OpenRouter, it is just used for model identification.)
+    Identifiers of models recommended to be used. Usually corresponds to LiteLLM identifiers.
+    Should be the name of the provider slash name of the model as it appears in the API.
+    Examples: openai/gpt-4o, watsonx/ibm/granite-13b-chat-v2, ollama/mistral-small:22b
     """
+
+
+class LLMServiceExtensionParams(pydantic.BaseModel):
+    llm_demands: dict[str, LLMDemand]
+    """Model requests that the agent requires to be provided by the client."""
+
+
+class LLMServiceExtensionMetadata(pydantic.BaseModel):
+    llm_fulfillments: dict[str, LLMFulfillment] = {}
+    """Provided models corresponding to the model requests."""
+
+
+class LLMServiceExtension(BaseExtension[LLMServiceExtensionParams, LLMServiceExtensionMetadata]):
+    URI: str = "https://a2a-extensions.beeai.dev/services/llm/v1"
+    Params: type[LLMServiceExtensionParams] = LLMServiceExtensionParams
+    Metadata: type[LLMServiceExtensionMetadata] = LLMServiceExtensionMetadata
+
+    def fulfillment_metadata(
+        self, *, llm_fulfillments: dict[str, LLMFulfillment]
+    ) -> dict[str, LLMServiceExtensionMetadata]:
+        return {self.URI: LLMServiceExtensionMetadata(llm_fulfillments=llm_fulfillments)}

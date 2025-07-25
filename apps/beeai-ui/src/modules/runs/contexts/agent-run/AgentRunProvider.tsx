@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+'use client';
+
+import type { FilePart, TextPart } from '@a2a-js/sdk';
 import type { MessagePart } from 'acp-sdk';
-import isString from 'lodash/isString';
 import { type PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -12,36 +14,22 @@ import { getErrorCode } from '#api/utils.ts';
 import { useHandleError } from '#hooks/useHandleError.ts';
 import { useImmerWithGetter } from '#hooks/useImmerWithGetter.ts';
 import type { Agent } from '#modules/agents/api/types.ts';
-import type { TrajectoryMetadata } from '#modules/runs/api/types.ts';
-import {
-  type AgentMessage,
-  type ChatMessage,
-  type CitationTransform,
-  MessageContentTransformType,
-  MessageStatus,
-} from '#modules/runs/chat/types.ts';
-import { prepareMessageFiles } from '#modules/runs/files/utils.ts';
+import { FileUploadProvider } from '#modules/files/contexts/FileUploadProvider.tsx';
+import { useFileUpload } from '#modules/files/contexts/index.ts';
+import { convertFilesToUIFileParts, processFilePart } from '#modules/files/utils.ts';
+import { Role } from '#modules/messages/api/types.ts';
+import type { UIAgentMessage, UIMessage, UIMessagePart, UIUserMessage } from '#modules/messages/types.ts';
+import { UIMessagePartKind, UIMessageStatus } from '#modules/messages/types.ts';
+import { convertUIMessageParts, isAgentMessage, processTextPart, sortMessageParts } from '#modules/messages/utils.ts';
 import { useRunAgent } from '#modules/runs/hooks/useRunAgent.ts';
-import { SourcesProvider } from '#modules/runs/sources/contexts/SourcesProvider.tsx';
-import { extractSources, prepareMessageSources } from '#modules/runs/sources/utils.ts';
-import { createTrajectoryMetadata, prepareTrajectories } from '#modules/runs/trajectory/utils.ts';
-import { Role, type RunStats } from '#modules/runs/types.ts';
-import {
-  applyContentTransforms,
-  createCitationTransform,
-  createFileMessageParts,
-  createImageTransform,
-  createMessagePart,
-  extractValidUploadFiles,
-  isAgentMessage,
-  isArtifactPart,
-  mapToMessageFiles,
-} from '#modules/runs/utils.ts';
-import { ensureBase64Uri, isImageContentType } from '#utils/helpers.ts';
+import type { RunStats } from '#modules/runs/types.ts';
+import { SourcesProvider } from '#modules/sources/contexts/SourcesProvider.tsx';
+import { getMessageSourcesMap, processSourcePart } from '#modules/sources/utils.ts';
+import { processTrajectoryPart } from '#modules/trajectories/utils.ts';
 
-import { useFileUpload } from '../../files/contexts';
+import { MessagesProvider } from '../../../messages/contexts/MessagesProvider';
+import { AgentClientProvider } from '../agent-client/AgentClientProvider';
 import { AgentStatusProvider } from '../agent-status/AgentStatusProvider';
-import { MessagesProvider } from '../messages/MessagesProvider';
 import { AgentRunContext } from './agent-run-context';
 
 type MessagePartMetadata = NonNullable<MessagePart['metadata']>;
@@ -50,115 +38,74 @@ interface Props {
   agent: Agent;
 }
 
-export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
-  const [messages, getMessages, setMessages] = useImmerWithGetter<ChatMessage[]>([]);
+export function AgentRunProviders({ agent, children }: PropsWithChildren<Props>) {
+  return (
+    <FileUploadProvider allowedContentTypes={agent.defaultInputModes}>
+      <AgentClientProvider agent={agent}>
+        <AgentRunProvider agent={agent}>{children}</AgentRunProvider>
+      </AgentClientProvider>
+    </FileUploadProvider>
+  );
+}
+
+function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
+  const [messages, getMessages, setMessages] = useImmerWithGetter<UIMessage[]>([]);
   const [stats, setStats] = useState<RunStats>();
 
   const errorHandler = useHandleError();
 
   const { files, clearFiles } = useFileUpload();
   const { input, isPending, runAgent, stopAgent, reset } = useRunAgent({
-    onBeforeRun: () => {
+    onStart: () => {
       setStats({ startTime: Date.now() });
     },
-    onMessagePart: (event) => {
-      const { part } = event;
-      const { content, content_type, content_url, content_encoding, metadata } = part;
+    onStop: () => {
+      updateLastAgentMessage((message) => {
+        message.status = UIMessageStatus.Aborted;
+      });
+    },
+    onDone: () => {
+      setStats((stats) => ({ ...stats, endTime: Date.now() }));
+    },
+    onPart: (event) => {
+      switch (event.kind) {
+        case 'text':
+          handleTextPart(event);
 
-      const isArtifact = isArtifactPart(part);
-      const isImage = isImageContentType(content_type);
+          break;
+        case 'file':
+          handleFilePart(event);
 
-      const hasContent = isString(content);
-      const hasContentUrl = isString(content_url);
-      const hasBase64Content = hasContent && content_encoding === 'base64';
-      const hasFile = hasContentUrl || hasBase64Content;
-      const hasContentToDisplay = hasContent && content_type === 'text/plain';
-
-      const imageUrl = hasContentUrl ? content_url : hasBase64Content ? ensureBase64Uri(content, content_type) : null;
-
-      if (hasFile) {
-        if (isArtifact) {
-          updateLastAgentMessage((message) => {
-            message.files = prepareMessageFiles({ files: message.files, data: part });
-          });
-        } else if (isImage && imageUrl) {
-          updateLastAgentMessage((message) => {
-            message.contentTransforms.push(
-              createImageTransform({
-                imageUrl,
-                insertAt: message.rawContent.length,
-              }),
-            );
-          });
-        }
+          break;
       }
 
-      if (hasContentToDisplay) {
-        updateLastAgentMessage((message) => {
-          message.rawContent += content;
-        });
-      }
+      const { metadata } = event;
 
       if (metadata) {
         processMetadata(metadata as MessagePartMetadata);
       }
 
       updateLastAgentMessage((message) => {
-        message.content = applyContentTransforms({
-          rawContent: message.rawContent,
-          transforms: message.contentTransforms,
-        });
+        message.parts = sortMessageParts(message.parts);
       });
     },
-    onGeneric: (event) => {
-      const metadata = createTrajectoryMetadata(event.generic);
-
-      if (metadata) {
-        processMetadata(metadata as TrajectoryMetadata);
-      }
-    },
-    onMessageCompleted: () => {
+    onCompleted: () => {
       updateLastAgentMessage((message) => {
-        message.status = MessageStatus.Completed;
+        message.status = UIMessageStatus.Completed;
       });
     },
-    onRunCompleted: () => {
-      updateLastAgentMessage((message) => {
-        if (message.status !== MessageStatus.Completed) {
-          message.status = MessageStatus.Failed;
-        }
-      });
-    },
-    onStop: () => {
-      updateLastAgentMessage((message) => {
-        message.status = MessageStatus.Aborted;
-      });
-    },
-    onDone: () => {
-      handleDone();
-    },
-    onRunFailed: (event) => {
-      const { error } = event.run;
-
+    onFailed: (_, error) => {
       handleError(error);
 
-      if (error) {
-        updateLastAgentMessage((message) => {
-          message.error = error;
-          message.status = MessageStatus.Failed;
-        });
-
-        const metadata = createTrajectoryMetadata({ message: error.message });
-
-        if (metadata) {
-          processMetadata(metadata as TrajectoryMetadata);
-        }
-      }
+      updateLastAgentMessage((message) => {
+        message.error = error;
+        message.status = UIMessageStatus.Failed;
+      });
     },
   });
 
   const updateLastAgentMessage = useCallback(
-    (updater: (message: AgentMessage) => void) => {
+    (updater: (message: UIAgentMessage) => void) => {
       setMessages((messages) => {
         const lastMessage = messages.at(-1);
 
@@ -175,31 +122,13 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
       switch (metadata.kind) {
         case 'citation':
           updateLastAgentMessage((message) => {
-            const { sources, newSource } = prepareMessageSources({ message, metadata });
-
-            message.sources = sources;
-
-            if (newSource == null) {
-              return;
-            }
-
-            const citationTransformGroup = message.contentTransforms.find(
-              (transform): transform is CitationTransform =>
-                transform.kind === MessageContentTransformType.Citation &&
-                transform.startIndex === newSource.startIndex,
-            );
-
-            if (citationTransformGroup) {
-              citationTransformGroup.sources.push(newSource);
-            } else {
-              message.contentTransforms.push(createCitationTransform({ source: newSource }));
-            }
+            message.parts.push(...processSourcePart(metadata, message));
           });
 
           break;
         case 'trajectory':
           updateLastAgentMessage((message) => {
-            message.trajectories = prepareTrajectories({ trajectories: message.trajectories, data: metadata });
+            message.parts.push(processTrajectoryPart(metadata));
           });
 
           break;
@@ -208,9 +137,23 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
     [updateLastAgentMessage],
   );
 
-  const handleDone = useCallback(() => {
-    setStats((stats) => ({ ...stats, endTime: Date.now() }));
-  }, []);
+  const handleTextPart = useCallback(
+    (part: TextPart) => {
+      updateLastAgentMessage((message) => {
+        message.parts.push(processTextPart(part));
+      });
+    },
+    [updateLastAgentMessage],
+  );
+
+  const handleFilePart = useCallback(
+    (part: FilePart) => {
+      updateLastAgentMessage((message) => {
+        message.parts.push(...processFilePart(part, message));
+      });
+    },
+    [updateLastAgentMessage],
+  );
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -236,31 +179,35 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
 
   const run = useCallback(
     async (input: string) => {
-      const uploadFiles = extractValidUploadFiles(files);
-      const messageParts = [createMessagePart({ content: input }), ...createFileMessageParts(uploadFiles)];
-      const userFiles = mapToMessageFiles(uploadFiles);
+      const parts: UIMessagePart[] = [
+        {
+          id: uuid(),
+          kind: UIMessagePartKind.Text,
+          text: input,
+        },
+        ...convertFilesToUIFileParts(files),
+      ];
 
       setMessages((messages) => {
-        messages.push({
-          key: uuid(),
+        const userMessage: UIUserMessage = {
+          id: uuid(),
           role: Role.User,
-          content: input,
-          files: userFiles,
-        });
-        messages.push({
-          key: uuid(),
+          parts,
+        };
+        const agentMessage: UIAgentMessage = {
+          id: uuid(),
           role: Role.Agent,
-          content: '',
-          rawContent: '',
-          contentTransforms: [],
-          status: MessageStatus.InProgress,
-        });
+          parts: [],
+          status: UIMessageStatus.InProgress,
+        };
+
+        messages.push(...[userMessage, agentMessage]);
       });
 
       clearFiles();
 
       try {
-        await runAgent({ agent, messageParts });
+        await runAgent({ agent, parts: convertUIMessageParts(parts) });
       } catch (error) {
         handleError(error);
       }
@@ -268,7 +215,7 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
     [agent, files, setMessages, clearFiles, runAgent, handleError],
   );
 
-  const sourcesData = useMemo(() => extractSources(messages), [messages]);
+  const sources = useMemo(() => getMessageSourcesMap(messages), [messages]);
 
   const contextValue = useMemo(
     () => ({
@@ -285,7 +232,7 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
 
   return (
     <AgentStatusProvider agent={agent} isMonitorStatusEnabled>
-      <SourcesProvider sourcesData={sourcesData}>
+      <SourcesProvider sources={sources}>
         <MessagesProvider messages={getMessages()}>
           <AgentRunContext.Provider value={contextValue}>{children}</AgentRunContext.Provider>
         </MessagesProvider>
