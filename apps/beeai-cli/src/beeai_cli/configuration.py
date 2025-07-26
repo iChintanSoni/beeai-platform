@@ -30,7 +30,7 @@ class Configuration(pydantic_settings.BaseSettings):
         f"https://github.com/i-am-bee/beeai-platform@v{version()}#path=agent-registry.yaml"
     )
     admin_password: SecretStr | None = None
-    auth_disabled: bool = True
+    auth_disabled: bool = False
 
     @property
     def lima_home(self) -> pathlib.Path:

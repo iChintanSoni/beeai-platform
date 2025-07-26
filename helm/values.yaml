@@ -17,8 +17,12 @@ unmanagedProviders: [ ]
 externalRegistries: { }
 
 auth:
-  admin_password: ""
-  enabled: true # Warning, disable only for local deployments
+  enabled: true
+  client_id: "<your_client_id_here>"
+  client_secret: "<your_client_secret_here>"
+  discovery_url: "<your_oidc_discovery_endpoint_here>"
+  jwks_url: "<your_oidc_jwks_url_here>"
+
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
@@ -53,14 +57,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 # helm now allows creating a crds folder which will skip schema validation
-
-oidc:
-  enabled: true
-  client_id: "<your_client_id_here>"
-  client_secret: "<your_client_secret_here>"
-  discovery_url: "<your_oidc_discovery_endpoint_here>"
-  jwks_url: "<your_oidc_jwks_url_here>"
-
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: { }

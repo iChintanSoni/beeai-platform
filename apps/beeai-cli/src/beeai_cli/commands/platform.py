@@ -416,22 +416,6 @@ async def start(
         for image in import_images:
             await import_image(image, vm_name=vm_name)
 
-        # install certificate manager
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml",
-            ],
-            "Installing certificate manager...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-
         # Deploy HelmChart
         await run_command(
             [
@@ -469,8 +453,6 @@ async def start(
                                 "encryptionKey": "Ovx8qImylfooq4-HNwOzKKDcXLZCB3c_m0JlB9eJBxc=",  # Dummy key for local use
                                 "features": {"uiNavigation": True, "selfRegistration": True},
                                 "auth": {"enabled": False},
-                                "ssl": {"enabled": True},
-                                "oidc": {"enabled": False},
                             }
                         ),
                         "set": dict(value.split("=", 1) for value in set_values_list),
@@ -514,26 +496,6 @@ async def start(
                 "job/helm-install-beeai",
             ],
             "Waiting for deploy job to be finished",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-
-        await run_command(
-            [
-                *{
-                    VMDriver.lima: [_limactl_exe(), "shell", "--tty=true", vm_name, "--"],
-                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-                }[_vm_driver()],
-                "k3s",
-                "kubectl",
-                "--kubeconfig=/etc/rancher/k3s/k3s.yaml",
-                "get",
-                "pods",
-                "-o",
-                "wide",
-                "-A",
-            ],
-            "List running pods...",
             env={"LIMA_HOME": str(Configuration().lima_home)},
             cwd="/",
         )

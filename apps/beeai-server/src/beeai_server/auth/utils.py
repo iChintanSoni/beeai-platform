@@ -7,7 +7,7 @@ import os
 
 import jwt
 import requests
-from fastapi import Request
+from fastapi.security import HTTPAuthorizationCredentials
 from jwt import ExpiredSignatureError, InvalidTokenError, PyJWK
 
 from beeai_server.api.dependencies import ConfigurationDependency
@@ -19,9 +19,9 @@ configuration: ConfigurationDependency = get_configuration()
 
 
 # Initialize JWKS only if OIDC is enabled
-if not configuration.oidc.disable_oidc:
-    audience = configuration.oidc.client_id
-    JWKS_URL = configuration.oidc.jwks_url
+if not configuration.auth.disable_auth:
+    audience = configuration.auth.client_id
+    JWKS_URL = configuration.auth.jwks_url
     JWKS_FOLDER = "./jwks"
     JWKS_FILE = os.path.join(JWKS_FOLDER, "pubkeys.json")
 
@@ -47,25 +47,25 @@ else:
     audience = None
 
 
-def extract_token(request: Request) -> str | None:
-    """Extract token from Authorization header or 'beeai-platform' cookie."""
-    token = None
+def extract_token(
+    header_token: str | HTTPAuthorizationCredentials,
+    cookie_token: str | None,
+) -> str | None:
+    if isinstance(header_token, HTTPAuthorizationCredentials):
+        return header_token.credentials
 
-    # Extract token from Authorization header
-    auth_header = request.headers.get("Authorization")
-    if auth_header:
+    if header_token:
         try:
-            scheme, credentials = auth_header.split()
-            if scheme.lower == "bearer":
-                token = credentials
-        except ValueError:
+            scheme, credentials = header_token.split()
+            if scheme.lower() == "bearer":
+                return credentials
+            raise Exception("Unsupported auth scheme - Bearer is only valid scheme")
+        except ValueError as err:
             logger.warning("Invalid Authorization header format")
+            raise Exception("Invalid Authorization header format") from err
 
     # Fall back to cookie if no token in header
-    if not token:
-        token = request.cookies.get("beeai-platform")
-
-    return token
+    return cookie_token
 
 
 def decode_jwt_token(token: str, jwks: dict | None = None, aud: str | None = None) -> dict | None:

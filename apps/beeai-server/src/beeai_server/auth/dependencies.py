@@ -4,19 +4,19 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, Security
-from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import APIKeyCookie, APIKeyHeader
+from kink import di
 
-from beeai_server.api.dependencies import ConfigurationDependency
-from beeai_server.auth.utils import decode_jwt_token
-from beeai_server.configuration import get_configuration
+from beeai_server.auth.utils import decode_jwt_token, extract_token
+from beeai_server.configuration import Configuration
 
 from .models import AuthenticatedUser
 
-configuration: ConfigurationDependency = get_configuration()
+ConfigurationDependency = Annotated[Configuration, Depends(lambda: di[Configuration])]
 
 api_key_cookie = APIKeyCookie(name="beeai-platform", auto_error=False)
-# api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
-api_key_header = HTTPBearer(auto_error=False)
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
+# api_key_header = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(request: Request) -> AuthenticatedUser:
@@ -27,10 +27,11 @@ async def get_current_user(request: Request) -> AuthenticatedUser:
 
 
 async def get_authenticated_user(
+    configuration: ConfigurationDependency,
     cookie_token: Annotated[str | None, Security(api_key_cookie)],
-    header_token: Annotated[HTTPAuthorizationCredentials | None, Security(api_key_header)],
+    header_token: Annotated[str | None, Security(api_key_header)],
 ) -> AuthenticatedUser:
-    if configuration.oidc.disable_oidc:
+    if configuration.auth.disable_auth:
         # Bypass OIDC validation — return a default user for dev/testing mode
         return AuthenticatedUser(
             uid="dev-user",
@@ -38,8 +39,13 @@ async def get_authenticated_user(
             display_name="dev user",
             email="user@beeai.dev",
         )
-
-    token = header_token.credentials if header_token else cookie_token
+    try:
+        token = extract_token(header_token, cookie_token)
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid Authorization header: {e}",
+        ) from e
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -55,4 +61,4 @@ async def get_authenticated_user(
     )
 
 
-AuthenticationDependency = Annotated[AuthenticatedUser, Depends(get_authenticated_user)]
+AuthenticatedUserDependency = Annotated[AuthenticatedUser, Depends(get_authenticated_user)]

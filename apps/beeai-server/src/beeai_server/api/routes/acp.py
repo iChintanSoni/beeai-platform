@@ -14,12 +14,11 @@ from acp_sdk.models import (
     RunResumeRequest,
     RunResumeResponse,
 )
-from fastapi import Depends
 from fastapi.security import APIKeyCookie, APIKeyHeader
 
-from beeai_server.api.dependencies import AcpProxyServiceDependency, AuthenticatedUserDependency
+from beeai_server.api.dependencies import AcpProxyServiceDependency
 from beeai_server.api.schema.acp import AgentReadResponse, AgentsListResponse
-from beeai_server.auth.dependencies import AuthenticationDependency
+from beeai_server.auth.dependencies import AuthenticatedUserDependency
 from beeai_server.service_layer.services.acp import AcpServerResponse
 
 # api_key_header = APIKeyHeader(name="Authorization")
@@ -37,7 +36,7 @@ async def ping() -> PingResponse:
 
 @router.get("/agents/{name}")
 async def read_agent(
-    name: AgentName, acp_service: AcpProxyServiceDependency, api_key: str = Depends(api_key_header)
+    name: AgentName, acp_service: AcpProxyServiceDependency, user: AuthenticatedUserDependency
 ) -> AgentReadResponse:
     return (await acp_service.get_agent_by_name(name)).model_dump()
 
@@ -45,8 +44,7 @@ async def read_agent(
 @router.get("/agents")
 async def list_agents(
     acp_service: AcpProxyServiceDependency,
-    # user: AuthenticatedUser = Depends(get_authenticated_user),
-    user: AuthenticationDependency,
+    user: AuthenticatedUserDependency,
 ) -> AgentsListResponse:
     return AgentsListResponse(agents=await acp_service.list_agents())
 
@@ -73,7 +71,6 @@ async def read_run(
     run_id: RunId,
     acp_service: AcpProxyServiceDependency,
     user: AuthenticatedUserDependency,
-    api_key: str = Depends(api_key_header),
 ) -> RunReadResponse:
     client = await acp_service.get_proxy_context(run_id=run_id, user=user)
     response = await acp_service.send_request(client, "GET", f"/runs/{run_id}")
@@ -85,7 +82,6 @@ async def read_run_events(
     run_id: RunId,
     acp_service: AcpProxyServiceDependency,
     user: AuthenticatedUserDependency,
-    api_key: str = Depends(api_key_header),
 ) -> RunReadResponse:
     client = await acp_service.get_proxy_context(run_id=run_id, user=user)
     response = await acp_service.send_request(client, "GET", f"/runs/{run_id}/events")
@@ -98,7 +94,6 @@ async def resume_run(
     request: RunResumeRequest,
     acp_service: AcpProxyServiceDependency,
     user: AuthenticatedUserDependency,
-    api_key: str = Depends(api_key_header),
 ) -> RunResumeResponse:
     client = await acp_service.get_proxy_context(run_id=run_id, user=user)
     response = await acp_service.send_request(client, "POST", f"/runs/{run_id}", request)
@@ -110,7 +105,6 @@ async def cancel_run(
     run_id: RunId,
     acp_service: AcpProxyServiceDependency,
     user: AuthenticatedUserDependency,
-    api_key: str = Depends(api_key_header),
 ) -> RunCancelResponse:
     client = await acp_service.get_proxy_context(run_id=run_id, user=user)
     response = await acp_service.send_request(client, "POST", f"/runs/{run_id}/cancel")
@@ -122,7 +116,6 @@ async def read_session(
     session_id: SessionId,
     acp_service: AcpProxyServiceDependency,
     user: AuthenticatedUserDependency,
-    api_key: str = Depends(api_key_header),
 ) -> SessionReadResponse:
     client = await acp_service.get_proxy_context(session_id=session_id, user=user)
     response = await acp_service.send_request(client, "GET", f"/sessions/{session_id}")
