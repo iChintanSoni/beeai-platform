@@ -21,9 +21,6 @@ from beeai_server.api.schema.acp import AgentReadResponse, AgentsListResponse
 from beeai_server.auth.dependencies import AuthenticatedUserDependency
 from beeai_server.service_layer.services.acp import AcpServerResponse
 
-# api_key_header = APIKeyHeader(name="Authorization")
-# api_key_header = APIKeyCookie(name="beeai-platform")
-
 api_key_cookie = APIKeyCookie(name="beeai-platform", auto_error=False)
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 router = fastapi.APIRouter()

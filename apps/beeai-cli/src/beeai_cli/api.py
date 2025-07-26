@@ -15,7 +15,7 @@ from typing import Any
 import httpx
 import psutil
 from acp_sdk.client import Client
-from httpx import BasicAuth, HTTPStatusError
+from httpx import HTTPStatusError
 from httpx._types import RequestFiles
 
 from beeai_cli.configuration import Configuration
@@ -50,6 +50,16 @@ def server_process_status(
     return ProcessStatus.not_running
 
 
+async def set_auth_header():
+    if not config.auth_disabled:
+        token = await load_token()
+        if not token:
+            raise RuntimeError("No token found. Please run `beeai login` first.")
+        if not token.get("id_token"):
+            raise RuntimeError("No id token found. Please run `beeai login` first.")
+        return f"Bearer {token.get('id_token')}"
+
+
 async def wait_for_api(initial_delay_seconds=5, wait: timedelta = timedelta(minutes=20)):
     await asyncio.sleep(initial_delay_seconds)
     start_time = datetime.now()
@@ -70,11 +80,8 @@ async def api_request(
     use_auth: bool = True,
 ) -> dict | None:
     headers = {}
-    if use_auth and not config.auth_disabled:
-        token = await load_token()
-        if not token:
-            raise RuntimeError("No token found. Please run `beeai login` first.")
-        headers["Authorization"] = f"Bearer {token}"
+    if use_auth:
+        headers["Authorization"] = set_auth_header()
 
     """Make an API request to the server."""
     async with httpx.AsyncClient() as client:
@@ -86,7 +93,6 @@ async def api_request(
             params=params,
             timeout=60,
             headers=headers,
-            auth=BasicAuth("beeai-admin", config.admin_password.get_secret_value()) if config.admin_password else None,
         )
         if response.is_error:
             try:
@@ -103,8 +109,16 @@ async def api_request(
 
 
 async def api_stream(
-    method: str, path: str, json: dict | None = None, params: dict[str, Any] | None = None
+    method: str,
+    path: str,
+    json: dict | None = None,
+    params: dict[str, Any] | None = None,
+    use_auth: bool = True,
 ) -> AsyncIterator[dict[str, Any]]:
+    headers = {}
+    if use_auth:
+        headers["Authorization"] = set_auth_header()
+
     """Make a streaming API request to the server."""
     import json as jsonlib
 
@@ -116,6 +130,7 @@ async def api_stream(
             json=json,
             params=params,
             timeout=timedelta(hours=1).total_seconds(),
+            headers=headers,
         ) as response,
     ):
         response: httpx.Response
@@ -134,10 +149,7 @@ async def api_stream(
 @asynccontextmanager
 async def acp_client(use_auth: bool = True) -> AsyncIterator[Client]:
     headers = {}
-    if use_auth and not config.auth_disabled:
-        token = await load_token()
-        if not token:
-            raise RuntimeError("No token found. Please run `beeai login` first.")
-        headers["Authorization"] = f"Bearer {token}"
+    if use_auth:
+        headers["Authorization"] = set_auth_header()
     async with Client(base_url=ACP_URL, headers=headers) as client:
         yield client
