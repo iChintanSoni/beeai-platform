@@ -22,7 +22,7 @@ configuration: ConfigurationDependency = get_configuration()
 if not configuration.auth.disable_auth:
     audience = configuration.auth.client_id
     JWKS_URL = configuration.auth.jwks_url
-    JWKS_FOLDER = "./jwks"
+    JWKS_FOLDER = "/tmp/jwks"
     JWKS_FILE = os.path.join(JWKS_FOLDER, "pubkeys.json")
 
     os.makedirs(JWKS_FOLDER, exist_ok=True)

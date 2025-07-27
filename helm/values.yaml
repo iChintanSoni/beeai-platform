@@ -123,6 +123,19 @@ resources:
 #     scheme: HTTPS
 #     port: http
 
+# Additional volumes on the output Deployment definition.
+volumes:
+- name: jwks
+  persistentVolumeClaim:
+    claimName: beeai-jwks
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: 
+- name: jwks
+  mountPath: /tmp/jwks
+
+storage:
+  storage_class: local-path
 
 nodeSelector: { }
 

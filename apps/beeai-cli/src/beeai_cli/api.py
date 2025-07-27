@@ -81,7 +81,7 @@ async def api_request(
 ) -> dict | None:
     headers = {}
     if use_auth:
-        headers["Authorization"] = set_auth_header()
+        headers["Authorization"] = await set_auth_header()
 
     """Make an API request to the server."""
     async with httpx.AsyncClient() as client:
@@ -117,7 +117,7 @@ async def api_stream(
 ) -> AsyncIterator[dict[str, Any]]:
     headers = {}
     if use_auth:
-        headers["Authorization"] = set_auth_header()
+        headers["Authorization"] = await set_auth_header()
 
     """Make a streaming API request to the server."""
     import json as jsonlib
@@ -150,6 +150,6 @@ async def api_stream(
 async def acp_client(use_auth: bool = True) -> AsyncIterator[Client]:
     headers = {}
     if use_auth:
-        headers["Authorization"] = set_auth_header()
+        headers["Authorization"] = await set_auth_header()
     async with Client(base_url=ACP_URL, headers=headers) as client:
         yield client
