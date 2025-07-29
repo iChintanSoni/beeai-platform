@@ -438,21 +438,6 @@ async def start(
             env={"LIMA_HOME": str(Configuration().lima_home)},
             cwd="/",
         )
-        # install ipset for istio see: https://github.com/istio/istio/issues/54810
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} sh -c 'apt install ipset -y'",
-            ],
-            "Installing ipset...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
 
         # install istio on the cluster in ambient mode
         await run_command(
@@ -463,7 +448,7 @@ async def start(
             + [
                 "/bin/sh",
                 "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} sh -c 'export PATH=/istio-1.26.2/bin:$PATH && export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && istioctl install --set profile=ambient --set values.global.platform=k3s --skip-confirmation'",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} sh -c 'export PATH=/istio-1.26.3/bin:$PATH && export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && istioctl install --set profile=ambient --set values.global.platform=k3s --skip-confirmation'",
             ],
             "Installing istio in ambient mode...",
             env={"LIMA_HOME": str(Configuration().lima_home)},
@@ -508,7 +493,7 @@ async def start(
             + [
                 "/bin/sh",
                 "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.2/samples/addons/prometheus.yaml",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/prometheus.yaml",
             ],
             "Installing prometheus...",
             env={"LIMA_HOME": str(Configuration().lima_home)},
@@ -522,7 +507,7 @@ async def start(
             + [
                 "/bin/sh",
                 "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.2/samples/addons/kiali.yaml",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/kiali.yaml",
             ],
             "Installing Kiali...",
             env={"LIMA_HOME": str(Configuration().lima_home)},

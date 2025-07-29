@@ -5,6 +5,7 @@
 
 export const routes = {
   home: () => '/' as const,
+  login: () => '/auth/signin' as const,
   notFound: () => '/not-found' as const,
   agents: () => `/${sections.agents}` as const,
   agentRun: ({ name }: { name: string }) => `/${sections.agents}/${name}`,

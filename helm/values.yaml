@@ -80,6 +80,25 @@ usessl:
   IBM_CLIENT_SECRET: <your_client_secret_here>
   DISCOVERY_ENDPOINT: <your_oidc_discovery_endpoint_here>
 
+oidc:
+  enabled: true
+  discovery_url: <your_oidc_discovery_endpoint_here>
+  client_id: <your_client_id_here>
+  client_secret: <your_client_secret_here>
+  jwks_url: <your_jwks_endpoint_here>
+  AUTH_TRUST_HOST: true
+  NEXTAUTH_URL: https://beeai-platform.api.testing:8336
+  AUTH_REDIRECT_PROXY_URL: https://beeai-platform.api.testing:8336
+  AUTH_IBM_AUTHORIZATION: <your_authorization_endpoint_here>
+  AUTH_IBM_USERINFO: <your_userinfo_endpoint>
+  AUTH_IBM_ISSUER: <your_issuer>
+  AUTH_IBM_TOKEN:  <your_token_endpoint>
+  # base64 encoded client secret
+  AUTH_IBM_SECRET: <your_base64_encoded_client_secret>
+  # base64 encoded auth secret
+  AUTH_SECRET: <your_next_auth_secret>
+
+
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
