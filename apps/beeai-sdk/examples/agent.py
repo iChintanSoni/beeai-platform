@@ -25,17 +25,31 @@ import uvicorn
 
 import beeai_sdk.a2a_extensions
 
-agent_details_extension = beeai_sdk.a2a_extensions.AgentDetailsExtension(
-    params=beeai_sdk.a2a_extensions.AgentDetails(
+agent_detail_extension = beeai_sdk.a2a_extensions.AgentDetailExtension(
+    beeai_sdk.a2a_extensions.AgentDetail(
         ui_type="chat",
     )
 )
+
+citation_extension = beeai_sdk.a2a_extensions.CitationExtension()
+
+trajectory_extension = beeai_sdk.a2a_extensions.TrajectoryExtension()
 
 llm_service_extension = beeai_sdk.a2a_extensions.LLMServiceExtension(
     params=beeai_sdk.a2a_extensions.services.llm.LLMServiceExtensionParams(
         llm_demands={
             "default": beeai_sdk.a2a_extensions.LLMDemand(
                 description="Default LLM for the agent", suggested=("openai/gpt-4o", "ollama/granite3.3:8b")
+            )
+        }
+    ),
+)
+
+embedding_service_extension = beeai_sdk.a2a_extensions.EmbeddingServiceExtension(
+    params=beeai_sdk.a2a_extensions.EmbeddingServiceExtensionParams(
+        embedding_demands={
+            "default": beeai_sdk.a2a_extensions.EmbeddingDemand(
+                description="Default embedding for the agent", suggested=("ollama/nomic-text:8b",)
             )
         }
     ),

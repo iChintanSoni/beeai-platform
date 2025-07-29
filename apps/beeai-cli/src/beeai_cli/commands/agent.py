@@ -148,7 +148,7 @@ async def add_agent(
     verbose: typing.Annotated[bool, typer.Option("-v", help="Show verbose output")] = False,
 ) -> None:
     """Install discovered agent or add public docker image or github repository [aliases: install]"""
-    agents = None
+    agent_card = None
     # Try extracting manifest locally for local images
 
     with verbosity(verbose):
@@ -160,7 +160,7 @@ async def add_agent(
         try:
             if process.returncode:
                 # If the image was not found locally, try building image
-                location, agents = await build(location, tag=None, vm_name=vm_name, import_image=True)
+                location, agent_card = await build(location, tag=None, vm_name=vm_name, import_image=True)
             else:
                 manifest = base64.b64decode(
                     json.loads(process.stdout)[0]["Config"]["Labels"]["beeai.dev.agent.json"]
@@ -341,7 +341,8 @@ async def _run_agent(
                                     console.print("[yellow]Task was canceled[/yellow]")
                                     return task_id, context_id
                                 case TaskState.failed:
-                                    console.print("[red]Task failed[/red]")
+                                    message = task_status.message.parts[0].root.text if task_status.message else ""
+                                    console.print(f"[red]Task failed[/red]: {message}")
                                     return task_id, context_id
                                 case TaskState.rejected:
                                     console.print("[red]Task was rejected[/red]")

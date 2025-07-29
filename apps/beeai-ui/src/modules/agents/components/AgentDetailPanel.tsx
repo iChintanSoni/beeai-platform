@@ -4,7 +4,6 @@
  */
 
 'use client';
-
 import { ArrowUpRight } from '@carbon/icons-react';
 import { SkeletonText, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 
@@ -16,8 +15,6 @@ import { SidePanelVariant } from '#contexts/App/types.ts';
 import { useAgentNameFromPath } from '#hooks/useAgentNameFromPath.ts';
 
 import { useAgent } from '../api/queries/useAgent';
-import { AgentLinkType } from '../api/types';
-import { getAvailableAgentLinkUrl } from '../utils';
 import { AgentCredits } from './AgentCredits';
 import classes from './AgentDetailPanel.module.scss';
 import { AgentTags } from './AgentTags';
@@ -32,14 +29,8 @@ export function AgentDetailPanel() {
 
   const {
     description,
-    ui: { documentation, links, contributors, author },
+    ui: { contributors, author, source_code_url },
   } = agent;
-  const agentUrl = getAvailableAgentLinkUrl(links, [
-    AgentLinkType.Homepage,
-    AgentLinkType.Documentation,
-    AgentLinkType.SourceCode,
-  ]);
-  const agentInfo = description ?? documentation;
 
   const isOpen = activeSidePanel === SidePanelVariant.AgentDetail;
 
@@ -59,16 +50,16 @@ export function AgentDetailPanel() {
                 {!isPending ? (
                   <>
                     <div className={classes.mainInfo}>
-                      {agentInfo && <MarkdownContent className={classes.description}>{agentInfo}</MarkdownContent>}
+                      {description && <MarkdownContent className={classes.description}>{description}</MarkdownContent>}
 
                       {(author || contributors) && <AgentCredits author={author} contributors={contributors} />}
                     </div>
 
                     <AgentTags agent={agent} />
 
-                    {agentUrl && (
-                      <ExternalLink href={agentUrl} className={classes.docsLink}>
-                        View more <ArrowUpRight />
+                    {source_code_url && (
+                      <ExternalLink href={source_code_url} className={classes.docsLink}>
+                        View source code <ArrowUpRight />
                       </ExternalLink>
                     )}
                   </>
