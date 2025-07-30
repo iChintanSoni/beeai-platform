@@ -3,22 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { FilePart, Part, TextPart } from '@a2a-js/sdk';
-import { v4 as uuid } from 'uuid';
-
-import { getFileContentUrl } from '#modules/files/utils.ts';
-import { isNotNull } from '#utils/helpers.ts';
-
 import { Role } from './api/types';
-import type {
-  UIAgentMessage,
-  UIMessage,
-  UIMessagePart,
-  UISourcePart,
-  UITextPart,
-  UITransformPart,
-  UIUserMessage,
-} from './types';
+import type { UIAgentMessage, UIMessage, UIMessagePart, UISourcePart, UITransformPart, UIUserMessage } from './types';
 import { UIMessagePartKind, UIMessageStatus, UITransformType } from './types';
 
 export function isUserMessage(message: UIMessage): message is UIUserMessage {
@@ -74,11 +60,16 @@ export function getMessageTrajectories(message: UIMessage) {
   return trajectories;
 }
 
-export function checkMessageError(message: UIAgentMessage) {
-  const { status } = message;
-  const isError = status === UIMessageStatus.Failed || status === UIMessageStatus.Aborted;
+export function checkMessageStatus(message: UIAgentMessage) {
+  const { status, error } = message;
 
-  return isError;
+  const isInProgress = status === UIMessageStatus.InProgress;
+  const isCompleted = status === UIMessageStatus.Completed;
+  const isAborted = status === UIMessageStatus.Aborted;
+  const isFailed = status === UIMessageStatus.Failed;
+  const isError = isFailed || isAborted;
+
+  return { isInProgress, isCompleted, isAborted, isFailed, isError, error };
 }
 
 export function checkMessageContent(message: UIMessage) {
@@ -87,45 +78,6 @@ export function checkMessageContent(message: UIMessage) {
   );
 
   return hasContent;
-}
-
-export function convertUIMessageParts(uiParts: UIMessagePart[]): Part[] {
-  const parts: Part[] = uiParts
-    .map((part) => {
-      switch (part.kind) {
-        case UIMessagePartKind.Text:
-          const { text } = part;
-
-          return {
-            kind: 'text',
-            text,
-          } as TextPart;
-        case UIMessagePartKind.File:
-          const { id, filename, type } = part;
-
-          return {
-            kind: 'file',
-            file: {
-              uri: getFileContentUrl({ id, addBase: true }),
-              name: filename,
-              mimeType: type,
-            },
-          } as FilePart;
-      }
-    })
-    .filter(isNotNull);
-
-  return parts;
-}
-
-export function processTextPart(part: TextPart): UITextPart {
-  const uiPart: UITextPart = {
-    kind: UIMessagePartKind.Text,
-    id: uuid(),
-    text: part.text,
-  };
-
-  return uiPart;
 }
 
 export function sortMessageParts(parts: UIMessagePart[]): UIMessagePart[] {
