@@ -78,10 +78,10 @@ spec:
               value: {{ .Values.oidc.discovery_url }}
             - name: AUTH_IBM_ID
               value: {{ .Values.oidc.client_id }}
-          {{- end }}
           envFrom:
             - secretRef:
                 name: beeai-w3id
+          {{- end }}
       volumes:
       {{- with .Values.ui.nodeSelector }}
       nodeSelector:

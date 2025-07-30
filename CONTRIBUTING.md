@@ -74,29 +74,44 @@ eval "$(mise run beeai-platform:shell)"
 deactivate
 ```
 
-### Istio 
+### Enabling or disabling auth flows for beeai_cli
+- update beeai-cli/src/beeai_cli/configuration.py and toggle the value of auth_disabled as needed
+```Python
+auth_disabled: bool = False
+```
+When auth_disabled is `False`:
 
-Add an entry to /etc/hosts on your local system:
+- Add an entry to /etc/hosts on your local system:
 ```
 # Added by BEEAI-PLATFORM
 127.0.0.1        beeai-platform.api.testing
 ```
 
 Update OAuth credentials in helm/values.yaml under:
-```YAML
-usessl:
-  enabled: true
-  IBM_CLIENT_ID: <your_client_id_here>
-  IBM_CLIENT_SECRET: <your_client_secret_here>
-  DISCOVERY_ENDPOINT: <your_oidc_discovery_endpoint_here>
-```
 
+```YAML
+oidc:
+  enabled: true
+  discovery_url: <your_oidc_discovery_endpoint_here>
+  client_id: <your_client_id_here>
+  jwks_url: <your_jwks_endpoint_here>
+  AUTH_TRUST_HOST: true
+  NEXTAUTH_URL: https://beeai-platform.api.testing:8336
+  AUTH_REDIRECT_PROXY_URL: https://beeai-platform.api.testing:8336
+  AUTH_IBM_AUTHORIZATION: <your_authorization_endpoint_here>
+  AUTH_IBM_USERINFO: <your_userinfo_endpoint>
+  AUTH_IBM_ISSUER: <your_issuer>
+  AUTH_IBM_TOKEN:  <your_token_endpoint>
+  # base64 encoded client secret
+  AUTH_IBM_SECRET: <your_base64_encoded_client_secret>
+  # base64 encoded auth secret
+  AUTH_SECRET: <your_next_auth_secret>
+```
 
 This branch enables istio by default, and creates a gateway & routes for `https://beeai-platform.api.testing:8336/` .  The intent being that tokens returned by OAuth routes are receieved in the browser over HTTPS rather than plain text HTTP to prevent unauthorized use of tokens.
 
 The default namespace is labeled istio.io/dataplane-mode=ambient so all intra pod trafic is via ztunnel with the exception of the beeai-platform pod due to it's use of the hostNetwork (istio can not bring a hostNetwork enabled pod into the mesh).
 
-The first set of routes that have been enabled for token checking are the acp routes.   This is not yet fully functional since the ACP TypeScript client does not support supplying cookies/headers in constructor.  This blocks passing the token to the platform from the UI acp/typescript/src/client/client.ts  (Related issue: https://github.com/i-am-bee/acp/issues/140).  The python constructor does  ( see acp/python/src/acp_sdk/client/client.py ) so the cli and platform are OK.
 
 ### Running and debugging individual components
 

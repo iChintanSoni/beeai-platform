@@ -423,38 +423,6 @@ async def start(
         for image in import_images:
             await import_image(image, vm_name=vm_name)
 
-        # install istioctl
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} curl -L https://istio.io/downloadIstio | {'sudo' if _vm_driver() == VMDriver.lima else ''} sh -",
-            ],
-            "Installing istioctl...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-
-        # install istio on the cluster in ambient mode
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} sh -c 'export PATH=/istio-1.26.3/bin:$PATH && export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && istioctl install --set profile=ambient --set values.global.platform=k3s --skip-confirmation'",
-            ],
-            "Installing istio in ambient mode...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-
         await run_command(
             {
                 VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
@@ -484,7 +452,7 @@ async def start(
             env={"LIMA_HOME": str(Configuration().lima_home)},
             cwd="/",
         )
-
+        # Create the namespace istio-system (Required for helm/crds/gateway.yaml)
         await run_command(
             {
                 VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
@@ -493,55 +461,9 @@ async def start(
             + [
                 "/bin/sh",
                 "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/prometheus.yaml",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl create namespace istio-system",
             ],
-            "Installing prometheus...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/kiali.yaml",
-            ],
-            "Installing Kiali...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-        # now expose Kiali via node port
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl -n istio-system expose deployment kiali --protocol=TCP --port=20001 --target-port=20001 --type=NodePort --name=kiali-external",
-            ],
-            "Exposing Kiali service...",
-            env={"LIMA_HOME": str(Configuration().lima_home)},
-            cwd="/",
-        )
-
-        # now label the namespace
-        # kubectl label namespace default istio.io/dataplane-mode=ambient
-        await run_command(
-            {
-                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
-                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
-            }[_vm_driver()]
-            + [
-                "/bin/sh",
-                "-c",
-                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl label namespace default istio.io/dataplane-mode=ambient",
-            ],
-            "Labeling the default namespace...",
+            "Creating istio-system namespace...",
             env={"LIMA_HOME": str(Configuration().lima_home)},
             cwd="/",
         )
@@ -561,6 +483,101 @@ async def start(
             env={"LIMA_HOME": str(Configuration().lima_home)},
             cwd="/",
         )
+
+        # When authentication is enabled setup a gateway and istio in ambient mode
+        if not Configuration().auth_disabled:
+            # install istioctl
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} curl -L https://istio.io/downloadIstio | {'sudo' if _vm_driver() == VMDriver.lima else ''} sh -",
+                ],
+                "Installing istioctl...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
+            # install istio on the cluster in ambient mode
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} sh -c 'export PATH=/istio-1.26.3/bin:$PATH && export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && istioctl install --set profile=ambient --set values.global.platform=k3s --skip-confirmation'",
+                ],
+                "Installing istio in ambient mode...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/prometheus.yaml",
+                ],
+                "Installing prometheus...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/kiali.yaml",
+                ],
+                "Installing Kiali...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+            # now expose Kiali via node port
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl -n istio-system expose deployment kiali --protocol=TCP --port=20001 --target-port=20001 --type=NodePort --name=kiali-external",
+                ],
+                "Exposing Kiali service...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
+            # now label the namespace
+            # kubectl label namespace default istio.io/dataplane-mode=ambient
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl label namespace default istio.io/dataplane-mode=ambient",
+                ],
+                "Labeling the default namespace...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
 
         # Deploy HelmChart
         await run_command(
