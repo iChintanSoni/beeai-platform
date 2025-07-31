@@ -65,6 +65,7 @@ version=$(
     yq -r .version              helm/Chart.yaml
     yq -r .appVersion           helm/Chart.yaml
     yq -r .project.version      apps/beeai-cli/pyproject.toml
+    yq -r .project.version      apps/beeai-sdk/pyproject.toml
     yq -r .project.version      apps/beeai-server/pyproject.toml
     yq -r .version              apps/beeai-ui/package.json
     yq -r .version              apps/beeai-web/package.json
@@ -220,6 +221,7 @@ fi
 yq -i ".version = \"$new_version\"" helm/Chart.yaml
 yq -i ".appVersion = \"$new_version\"" helm/Chart.yaml
 (cd apps/beeai-cli && toml set 'project.version' "$new_version" --toml-path pyproject.toml && uv lock)
+(cd apps/beeai-sdk && toml set 'project.version' "$new_version" --toml-path pyproject.toml && uv lock)
 (cd apps/beeai-server && toml set 'project.version' "$new_version" --toml-path pyproject.toml && uv lock)
 yq -i ".version = \"$new_version\"" apps/beeai-ui/package.json
 yq -i ".version = \"$new_version\"" apps/beeai-web/package.json
@@ -229,7 +231,7 @@ yq -i ".providers[].location |= sub(\":(.*)\$\"; \":\" + \"$new_version\")" agen
 if gum confirm "Release version $new_version now?"; then
   (
     set -eux -o pipefail
-    git add agent-registry.yaml helm/Chart.yaml apps/beeai-{cli,server}/{uv.lock,pyproject.toml} apps/beeai-{ui,web}/package.json
+    git add agent-registry.yaml helm/Chart.yaml apps/beeai-{cli,server,sdk}/{uv.lock,pyproject.toml} apps/beeai-{ui,web}/package.json
     git commit -m "release: v$new_version"
     git tag "v$new_version"
     git push --atomic origin main "v$new_version"
