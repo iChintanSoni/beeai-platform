@@ -18,16 +18,19 @@ from a2a.types import (
     AgentProvider,
     AgentSkill,
     Artifact,
+    DataPart,
+    FilePart,
     Message,
     Part,
     SecurityScheme,
+    TaskArtifactUpdateEvent,
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
     TextPart,
 )
 
-from beeai_sdk.a2a.extensions.ui.agent_details import AgentDetail, AgentDetailsExtensionSpec
+from beeai_sdk.a2a.extensions.ui.agent_detail import AgentDetail, AgentDetailExtensionSpec
 from beeai_sdk.a2a.types import ArtifactChunk, RunYield, RunYieldResume
 from beeai_sdk.server.context import Context
 from beeai_sdk.server.dependencies import extract_dependencies
@@ -50,7 +53,7 @@ def agent(
     capabilities: AgentCapabilities | None = None,
     default_input_modes: list[str] | None = None,
     default_output_modes: list[str] | None = None,
-    details: AgentDetail | None = None,
+    detail: AgentDetail | None = None,
     documentation_url: str | None = None,
     icon_url: str | None = None,
     preferred_transport: str | None = None,
@@ -74,7 +77,7 @@ def agent(
         a per-skill basis.
     :param default_output_modes: Default set of supported output MIME types for all skills, which can be overridden on
         a per-skill basis.
-    :param details: BeeAI SDK details extending the agent metadata
+    :param detail: BeeAI SDK details extending the agent metadata
     :param documentation_url: An optional URL to the agent's documentation.
     :param extensions: BeeAI SDK extensions to apply to the agent.
     :param icon_url: An optional URL to an icon for the agent.
@@ -92,7 +95,7 @@ def agent(
     """
 
     capabilities = capabilities.model_copy(deep=True) if capabilities else AgentCapabilities(streaming=True)
-    details = details or AgentDetail()  # pyright: ignore [reportCallIssue]
+    detail = detail or AgentDetail()  # pyright: ignore [reportCallIssue]
 
     def decorator(fn: Callable) -> Agent:
         signature = inspect.signature(fn)
@@ -104,7 +107,7 @@ def agent(
 
         capabilities.extensions = [
             *(capabilities.extensions or []),
-            *(AgentDetailsExtensionSpec(details).to_agent_card_extensions()),
+            *(AgentDetailExtensionSpec(detail).to_agent_card_extensions()),
             *(e_card for ext in sdk_extensions for e_card in ext.spec.to_agent_card_extensions()),
         ]
 
@@ -274,10 +277,10 @@ class Executor(AgentExecutor):
                             TaskState.working,
                             message=task_updater.new_agent_message(parts=[Part(root=TextPart(text=text))]),
                         )
-                    case Part():
+                    case Part(root=part) | (TextPart() | FilePart() | DataPart() as part):
                         await task_updater.update_status(
                             TaskState.working,
-                            message=task_updater.new_agent_message(parts=[yielded_value]),
+                            message=task_updater.new_agent_message(parts=[Part(root=part)]),
                         )
                     case Message(context_id=context_id, task_id=task_id):
                         new_msg = yielded_value.model_copy(
@@ -323,6 +326,23 @@ class Executor(AgentExecutor):
                         continue
                     case TaskStatus(state=state, message=message, timestamp=timestamp):
                         await task_updater.update_status(state=state, message=message, timestamp=timestamp)
+                    case TaskStatusUpdateEvent(
+                        status=TaskStatus(state=state, message=message, timestamp=timestamp), final=final
+                    ):
+                        await task_updater.update_status(state=state, message=message, timestamp=timestamp, final=final)
+                    case TaskArtifactUpdateEvent(
+                        artifact=Artifact(artifact_id=artifact_id, name=name, metadata=metadata, parts=parts),
+                        append=append,
+                        last_chunk=last_chunk,
+                    ):
+                        await task_updater.add_artifact(
+                            parts=parts,
+                            artifact_id=artifact_id,
+                            name=name,
+                            metadata=metadata,
+                            append=append,
+                            last_chunk=last_chunk,
+                        )
                     case dict():
                         await task_updater.update_status(
                             state=TaskState.working,

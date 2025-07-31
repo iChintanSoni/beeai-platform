@@ -36,6 +36,7 @@ app = AsyncTyper()
 @app.command("build")
 async def build(
     context: typing.Annotated[str, typer.Argument(help="Docker context for the agent")] = ".",
+    dockerfile: typing.Annotated[str | None, typer.Option(help="Use custom dockerfile path")] = None,
     tag: typing.Annotated[str | None, typer.Option(help="Docker tag for the agent")] = None,
     multi_platform: bool | None = False,
     push: typing.Annotated[bool, typer.Option(help="Push the image to the target registry.")] = False,
@@ -49,8 +50,12 @@ async def build(
         await run_command(["which", "docker"], "Checking docker")
         image_id = "beeai-agent-build-tmp:latest"
         port = await find_free_port()
+        dockerfile_args = ("-f", dockerfile) if dockerfile else ()
 
-        await run_command(["docker", "build", context, "-t", image_id], "Building agent image")
+        await run_command(
+            ["docker", "build", context, *dockerfile_args, "-t", image_id],
+            "Building agent image",
+        )
 
         agent_card = None
 
@@ -89,7 +94,7 @@ async def build(
                         with suppress(ProcessLookupError):
                             process.kill()
 
-        context_hash = hashlib.sha256(context.encode()).hexdigest()[:6]
+        context_hash = hashlib.sha256((context + (dockerfile or "")).encode()).hexdigest()[:6]
         context_shorter = re.sub(r"https?://", "", context).replace(r".git", "")
         context_shorter = re.sub(r"[^a-zA-Z0-9_-]+", "-", context_shorter)[:32].lstrip("-") or "provider"
         tag = (tag or f"beeai.local/{context_shorter}-{context_hash}:latest").lower()
@@ -102,6 +107,7 @@ async def build(
                 ),
                 "--push" if push else "--load",
                 context,
+                *dockerfile_args,
                 "-t",
                 tag,
                 f"--label=beeai.dev.agent.json={base64.b64encode(json.dumps(agent_card).encode()).decode()}",

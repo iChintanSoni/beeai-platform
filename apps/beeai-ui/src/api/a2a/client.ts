@@ -15,27 +15,36 @@ import type { ContextId } from '#modules/tasks/api/types.ts';
 import { getBaseUrl } from '#utils/api/getBaseUrl.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
+import { AGENT_ERROR_MESSAGE } from './constants';
 import { processFilePart, processTextPart } from './part-processors';
 import type { ChatRun } from './types';
-import { createUserMessage } from './utils';
+import { createUserMessage, extractTextFromMessage } from './utils';
 
 function handleStatusUpdate(event: TaskStatusUpdateEvent): UIMessagePart[] {
-  const { message } = event.status;
+  const { message, state } = event.status;
+
+  if (state === 'failed' || state === 'rejected') {
+    const errorMessage = extractTextFromMessage(message) ?? AGENT_ERROR_MESSAGE;
+
+    throw new Error(errorMessage);
+  }
 
   if (!message) {
     return [];
   }
 
   const parts = message.parts
-    .map((part) => {
-      const processedPart = match(part)
+    .flatMap((part) => {
+      const processedParts = match(part)
         .with({ kind: 'text' }, (part) => processTextPart(part, message.messageId))
         .with({ kind: 'file' }, processFilePart)
         .otherwise((otherPart) => {
-          throw new Error(`Unsupported part - ${otherPart.kind}`);
+          console.warn(`Unsupported part - ${otherPart.kind}`);
+
+          return null;
         });
 
-      return processedPart;
+      return processedParts;
     })
     .filter(isNotNull);
 
@@ -45,13 +54,6 @@ function handleStatusUpdate(event: TaskStatusUpdateEvent): UIMessagePart[] {
 export const buildA2AClient = (providerId: string) => {
   const agentUrl = `${getBaseUrl()}/api/v1/a2a/${providerId}`;
   const client = new A2AClient(agentUrl);
-
-  // HACK: the URL in the agent card is not using the nextjs proxy - we need to replace it
-  // eslint-disable-next-line
-  (client as unknown as any).agentCardPromise.then(() => {
-    // eslint-disable-next-line
-    (client as unknown as any).serviceEndpointUrl = agentUrl;
-  });
 
   const chat = ({ text, files, contextId }: { text: string; files: FileEntity[]; contextId: ContextId }) => {
     const taskId = uuid();
