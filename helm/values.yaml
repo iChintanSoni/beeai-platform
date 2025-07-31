@@ -125,14 +125,14 @@ resources:
 
 # Additional volumes on the output Deployment definition.
 volumes:
-- name: jwks
-  persistentVolumeClaim:
-    claimName: beeai-jwks
+  - name: jwks
+    persistentVolumeClaim:
+      claimName: beeai-jwks
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: 
-- name: jwks
-  mountPath: /tmp/jwks
+  - name: jwks
+    mountPath: /tmp/jwks
 
 storage:
   storage_class: local-path

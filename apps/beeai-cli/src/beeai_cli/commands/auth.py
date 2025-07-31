@@ -20,8 +20,16 @@ async def cli_login():
     Login to BeeAI using the default browser (OIDC flow).
     """
     login_resp = await api_request("POST", "login", params={"cli": "true"}, use_auth=False)
+
+    console.print(login_resp)
+    if not login_resp:
+        raise RuntimeError("Login failed: no response or missing login URL")
     login_url = login_resp["login_url"]
     login_id = login_resp["login_id"]
+
+    if login_url is None and login_id == "dev":
+        console.print("Authentication disabled - login is not required")
+        return
 
     console.print("Opening login URL in browser...")
     webbrowser.open(login_url)
