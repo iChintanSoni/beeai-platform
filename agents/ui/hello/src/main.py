@@ -1,13 +1,13 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from sdk import Server
-from extensions import BeeAIUITool, AgentDetailContributor, BeeAIUI
-from models import CitationMetadata, TextPart, TrajectoryMetadata
 from a2a.types import (
     AgentSkill,
     TextPart,
 )
+from extensions import AgentDetailContributor, BeeAIUI, BeeAIUITool
+from models import CitationMetadata, TextPart, TrajectoryMetadata
+from sdk import Server
 
 server = Server()
 

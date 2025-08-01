@@ -28,7 +28,6 @@ from beeai_framework.tools import Tool
 from beeai_framework.tools.search.duckduckgo import DuckDuckGoSearchTool
 from beeai_framework.tools.search.wikipedia import WikipediaTool
 from beeai_framework.tools.weather.openmeteo import OpenMeteoTool
-
 from beeai_sdk.a2a.extensions import AgentDetail, AgentDetailTool
 from beeai_sdk.a2a.types import AgentMessage
 from beeai_sdk.server import Server

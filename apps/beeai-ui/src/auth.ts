@@ -38,8 +38,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (trigger === 'update') token.name = session.user.name;
       return token;
     },
-    async session({ session, token }) {
-      if (token?.accessToken) session['accessToken'] = token.accessToken;
+    async session({ session }) {
+      // if (token?.accessToken) session['accessToken'] = token.accessToken;
       return session;
     },
   },

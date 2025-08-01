@@ -16,7 +16,7 @@ import httpx
 import psutil
 from a2a.client import A2AClient
 from a2a.types import AgentCard
-from httpx import BasicAuth, HTTPStatusError
+from httpx import HTTPStatusError
 from httpx._types import RequestFiles
 
 from beeai_cli.configuration import Configuration

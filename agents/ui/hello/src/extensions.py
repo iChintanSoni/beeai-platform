@@ -4,6 +4,7 @@
 from a2a.types import AgentExtension
 from pydantic import BaseModel
 
+
 class BeeAIUITool(BaseModel):
     name: str
     description: str

@@ -80,20 +80,20 @@ initContainers:
 
 oidc:
   enabled: true
-  discovery_url: <your_oidc_discovery_endpoint_here>
-  client_id: <your_client_id_here>
-  jwks_url: <your_jwks_endpoint_here>
+  discovery_url: https://preprod.login.w3.ibm.com/oauth2/.well-known/openid-configuration
+  client_id: "ZjM1MmVlZjMtOWJlZi00"
+  jwks_url: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/jwks
   AUTH_TRUST_HOST: true
   NEXTAUTH_URL: https://beeai-platform.api.testing:8336
   AUTH_REDIRECT_PROXY_URL: https://beeai-platform.api.testing:8336
-  AUTH_IBM_AUTHORIZATION: <your_authorization_endpoint_here>
-  AUTH_IBM_USERINFO: <your_userinfo_endpoint>
-  AUTH_IBM_ISSUER: <your_issuer>
-  AUTH_IBM_TOKEN:  <your_token_endpoint>
+  AUTH_IBM_AUTHORIZATION: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/authorize
+  AUTH_IBM_USERINFO: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/userinfo
+  AUTH_IBM_ISSUER: https://preprod.login.w3.ibm.com/oidc/endpoint/default
+  AUTH_IBM_TOKEN:  https://preprod.login.w3.ibm.com/v1.0/endpoint/default/token
   # base64 encoded client secret
-  AUTH_IBM_SECRET: <your_base64_encoded_client_secret>
+  AUTH_IBM_SECRET: WlRneU5tUXdZemN0Wm1VNE15MDA=
   # base64 encoded auth secret
-  AUTH_SECRET: <your_next_auth_secret>
+  AUTH_SECRET: SFpjcVdsRzhTY3JOSzJhTnFhTUFDSzdtQXZMYmozQVhvNG5UYm1ESENSOD0=
 
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:

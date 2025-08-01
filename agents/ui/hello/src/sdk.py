@@ -2,33 +2,33 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import abc
-from typing import AsyncGenerator, Callable
 import uuid
-import uvicorn
+from typing import AsyncGenerator, Callable
 
+import uvicorn
+from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.apps import A2AStarletteApplication
+from a2a.server.events import EventQueue
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore, TaskUpdater
 from a2a.types import (
-    AgentCard,
     AgentCapabilities,
-    TaskState,
+    AgentCard,
     AgentSkill,
-    Role,
     Part,
-    TextPart as A2ATextPart,
+    Role,
+    TaskState,
+)
+from a2a.types import (
     Message as A2AMessage,
 )
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
-from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import (
+    TextPart as A2ATextPart,
+)
 from a2a.utils import new_task
-from a2a.server.tasks import TaskUpdater
-from fastapi.middleware.cors import CORSMiddleware
-
-
-from models import TextPart
-
 from extensions import BeeAIUI
+from fastapi.middleware.cors import CORSMiddleware
+from models import TextPart
 
 
 class RunnableAgent(AgentCard):

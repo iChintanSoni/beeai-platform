@@ -1,7 +1,6 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 import logging
-import pathlib
 import secrets
 from collections.abc import Iterable
 from contextlib import asynccontextmanager
@@ -12,7 +11,6 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import ORJSONResponse
 from kink import Container, di, inject
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
-from starlette.exceptions import HTTPException as StarletteHttpException
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -34,7 +32,6 @@ from beeai_server.exceptions import (
     ManifestLoadError,
     PlatformError,
 )
-from beeai_server.middleware.authentication_middleware import JwtAuthBackend, on_auth_error
 from beeai_server.run_workers import run_workers
 from beeai_server.telemetry import INSTRUMENTATION_NAME, shutdown_telemetry
 
