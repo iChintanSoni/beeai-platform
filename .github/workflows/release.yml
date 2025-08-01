@@ -13,6 +13,7 @@ permissions:
 jobs:
   agents:
     runs-on: ubuntu-latest
+    environment: release
     strategy:
       matrix:
         agent:
@@ -34,7 +35,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
-          context: ./agents/${{ matrix.agent }}
+          context: .
+          file: ./agents/${{ matrix.agent }}/Dockerfile
           push: false
           load: true
           build-args: |
@@ -45,11 +47,11 @@ jobs:
       - id: agent-manifest
         run: |
           set -e
-          docker run -d --rm --name=tmp-agent -p 8000:8000 -e HOST=0.0.0.0 tmp-agent-image
+          docker run -d --rm --name=tmp-agent -p 8000:8000 -e HOST=0.0.0.0 -e PORT=8000 tmp-agent-image
           success=0
           for i in {1..30}; do
             echo "Extracting manifest: attempt $i"
-            response=$(curl http://localhost:8000/agents 2>/dev/null) && success=1 && break
+            response=$(curl http://localhost:8000/.well-known/agent.json 2>/dev/null) && success=1 && break
             sleep 0.5
           done
           [[ "$success" == 1 ]] || (echo "Failed to discover agents" && exit 1)
@@ -58,7 +60,8 @@ jobs:
           echo "content=$AGENT_MANIFEST" >> $GITHUB_OUTPUT
       - uses: docker/build-push-action@v5
         with:
-          context: ./agents/${{ matrix.agent }}
+          context: .
+          file: ./agents/${{ matrix.agent }}/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
@@ -68,13 +71,14 @@ jobs:
             ghcr.io/${{ github.repository }}/${{ matrix.agent }}:${{ steps.version.outputs.version }}
             ghcr.io/${{ github.repository }}/${{ matrix.agent }}:${{ steps.version.outputs.latestTag }}
           labels: |
-            beeai.dev.agent.yaml=${{ steps.agent-manifest.outputs.content }}
+            beeai.dev.agent.json=${{ steps.agent-manifest.outputs.content }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/${{ matrix.agent }}:cache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/${{ matrix.agent }}:cache,mode=max
 
   beeai-platform:
     needs: agents
     runs-on: ubuntu-latest
+    environment: release
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       HELM_EXPERIMENTAL_OCI: '1'
@@ -96,7 +100,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: mise run beeai-server:build
+      - run: mise run 'beeai-server:build:*'
       - uses: docker/build-push-action@v6
         with:
           context: ./apps/beeai-server
@@ -109,6 +113,20 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/beeai-server:cache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/beeai-server:cache,mode=max
 
+      - run: mise run 'beeai-ui:build:*'
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/beeai-ui/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/beeai-ui:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/beeai-ui:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}/beeai-ui:${{ steps.version.outputs.latestTag }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/beeai-ui:cache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/beeai-ui:cache,mode=max
+
       - run: mise run helm:build
       - run: echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login --username '${{ github.actor }}' --password-stdin ghcr.io
       - run: helm push ./helm/dist/beeai-platform-*.tgz 'oci://ghcr.io/${{ github.repository }}/beeai-platform-chart'
@@ -117,3 +135,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: apps/beeai-cli/dist
+      - run: mise run beeai-sdk:build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: apps/beeai-sdk/dist

@@ -6,9 +6,13 @@ metadata:
     app: otel-collector
     {{- include "beeai-platform.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.collector.service.type }}
   ports:
-    - port: 8335
+    - port: 4317
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+    - port: 4318
       targetPort: http
       protocol: TCP
       name: http

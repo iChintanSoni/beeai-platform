@@ -3,27 +3,55 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { AgentManifest, Metadata } from 'acp-sdk';
+import type { Provider } from '#modules/providers/api/types.ts';
 
-export type { AgentName } from 'acp-sdk';
+type AgentCard = Provider['agent_card'];
+type AgentCardProvider = AgentCard['provider'];
 
-export type AgentMetadata = Metadata & { provider_id?: string };
-
-export type Agent = Exclude<AgentManifest, 'metadata'> & { metadata?: AgentMetadata | null };
-
-export interface ListAgentsParams {
-  onlyUiSupported?: boolean;
-  sort?: boolean;
+export interface Agent extends Omit<AgentCard, 'provider'> {
+  provider: Omit<Provider, 'agent_card'> & {
+    metadata?: AgentCardProvider;
+  };
+  ui: UIExtensionParams;
 }
 
-export enum UiType {
+export type AgentExtension = NonNullable<Agent['capabilities']['extensions']>[number];
+
+export enum SupportedUIType {
   Chat = 'chat',
   HandsOff = 'hands-off',
 }
 
-export enum LinkType {
-  SourceCode = 'source-code',
-  ContainerImage = 'container-image',
-  Homepage = 'homepage',
-  Documentation = 'documentation',
+export interface AgentTool {
+  name: string;
+  description: string;
+}
+
+export interface UIExtensionParams {
+  ui_type?: SupportedUIType | string;
+  user_greeting?: string;
+  tools?: AgentTool[];
+  framework?: string;
+  license?: string;
+  programming_language?: string;
+  homepage_url?: string;
+  source_code_url?: string;
+  container_image_url?: string;
+  author?: AgentContributor;
+  contributors?: AgentContributor[];
+}
+
+/**
+ * TODO: figure out how this play with A2AClient to keep that colocated and properly encapsulated
+ */
+export const AGENT_EXTENSION_UI_KEY = 'https://a2a-extensions.beeai.dev/ui/agent-detail/v1';
+export interface UiExtension extends AgentExtension {
+  uri: 'https://a2a-extensions.beeai.dev/ui/agent-detail/v1';
+  params: UIExtensionParams & { [key: string]: unknown };
+}
+
+export interface AgentContributor {
+  name: string;
+  email?: string;
+  url?: string;
 }

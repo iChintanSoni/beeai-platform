@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+'use client';
+
 import { TagSkeleton } from '@carbon/react';
 import clsx from 'clsx';
 import type { ReactElement } from 'react';
@@ -17,13 +19,19 @@ interface Props {
 }
 
 export function TagsList({ tags, className }: Props) {
-  return tags.length > 0 ? (
+  const hasTags = tags.length > 0;
+
+  if (!hasTags) {
+    return null;
+  }
+
+  return (
     <ul className={clsx(classes.root, className)}>
       {tags.map((tag, idx) => (
         <li key={idx}>{tag}</li>
       ))}
     </ul>
-  ) : null;
+  );
 }
 
 interface SkeletonProps {

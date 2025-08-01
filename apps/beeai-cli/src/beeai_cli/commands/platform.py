@@ -311,7 +311,14 @@ async def start(
         elif status != "running":
             await run_command(
                 {
-                    VMDriver.lima: [_limactl_exe(), "--tty=false", "start", "--memory=8", vm_name],
+                    VMDriver.lima: [
+                        _limactl_exe(),
+                        "--tty=false",
+                        "start",
+                        "--memory=8",
+                        "--mount=/tmp/beeai:w",
+                        vm_name,
+                    ],
                     VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "dbus-launch", "true"],
                 }[_vm_driver()],
                 "Starting up",
@@ -416,6 +423,162 @@ async def start(
         for image in import_images:
             await import_image(image, vm_name=vm_name)
 
+        await run_command(
+            {
+                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+            }[_vm_driver()]
+            + [
+                "/bin/sh",
+                "-c",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null",
+            ],
+            "Installing gateway crds...",
+            env={"LIMA_HOME": str(Configuration().lima_home)},
+            cwd="/",
+        )
+
+        await run_command(
+            {
+                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+            }[_vm_driver()]
+            + [
+                "/bin/sh",
+                "-c",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml",
+            ],
+            "Installing gateway crds...",
+            env={"LIMA_HOME": str(Configuration().lima_home)},
+            cwd="/",
+        )
+        # Create the namespace istio-system (Required for helm/crds/gateway.yaml)
+        await run_command(
+            {
+                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+            }[_vm_driver()]
+            + [
+                "/bin/sh",
+                "-c",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl create namespace istio-system",
+            ],
+            "Creating istio-system namespace...",
+            env={"LIMA_HOME": str(Configuration().lima_home)},
+            cwd="/",
+        )
+
+        # install certificate manager
+        await run_command(
+            {
+                VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+            }[_vm_driver()]
+            + [
+                "/bin/sh",
+                "-c",
+                f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml",
+            ],
+            "Installing certificate manager...(used to auto-generate cert for gateway ingress)",
+            env={"LIMA_HOME": str(Configuration().lima_home)},
+            cwd="/",
+        )
+
+        # When authentication is enabled setup a gateway and istio in ambient mode
+        if not Configuration().auth_disabled:
+            # install istioctl
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} curl -L https://istio.io/downloadIstio | {'sudo' if _vm_driver() == VMDriver.lima else ''} sh -",
+                ],
+                "Installing istioctl...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
+            # install istio on the cluster in ambient mode
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} sh -c 'export PATH=/istio-1.26.3/bin:$PATH && export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && istioctl install --set profile=ambient --set values.global.platform=k3s --skip-confirmation'",
+                ],
+                "Installing istio in ambient mode...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/prometheus.yaml",
+                ],
+                "Installing prometheus...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl apply -f /istio-1.26.3/samples/addons/kiali.yaml",
+                ],
+                "Installing Kiali...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+            # now expose Kiali via node port
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl -n istio-system expose deployment kiali --protocol=TCP --port=20001 --target-port=20001 --type=NodePort --name=kiali-external",
+                ],
+                "Exposing Kiali service...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
+            # now label the namespace
+            # kubectl label namespace default istio.io/dataplane-mode=ambient
+            await run_command(
+                {
+                    VMDriver.lima: [_limactl_exe(), "--tty=false", "shell", vm_name, "--"],
+                    VMDriver.wsl: ["wsl.exe", "--user", "root", "--distribution", vm_name, "--"],
+                }[_vm_driver()]
+                + [
+                    "/bin/sh",
+                    "-c",
+                    f"{'sudo' if _vm_driver() == VMDriver.lima else ''} k3s kubectl label namespace default istio.io/dataplane-mode=ambient",
+                ],
+                "Labeling the default namespace...",
+                env={"LIMA_HOME": str(Configuration().lima_home)},
+                cwd="/",
+            )
+
         # Deploy HelmChart
         await run_command(
             [
@@ -448,6 +611,10 @@ async def start(
                         "targetNamespace": "default",
                         "valuesContent": yaml.dump(
                             {
+                                "collector": {"service": {"type": "LoadBalancer"}},
+                                "docling": {"service": {"type": "LoadBalancer"}},
+                                "ui": {"service": {"type": "LoadBalancer"}},
+                                "phoenix": {"service": {"type": "LoadBalancer"}},
                                 "hostNetwork": True,
                                 "externalRegistries": {"public_github": str(Configuration().agent_registry)},
                                 "encryptionKey": "Ovx8qImylfooq4-HNwOzKKDcXLZCB3c_m0JlB9eJBxc=",  # Dummy key for local use
@@ -520,10 +687,99 @@ async def start(
             cwd="/",
         )
 
+        # Set-up port forwarding for WSL
+        if _vm_driver() == VMDriver.wsl:
+            await run_command(
+                [
+                    "wsl.exe",
+                    "--user",
+                    "root",
+                    "--distribution",
+                    vm_name,
+                    "--",
+                    "tee",
+                    "/etc/systemd/system/kubectl-port-forward@.service",
+                ],
+                input=textwrap.dedent("""\
+                    [Unit]
+                    Description=Kubectl Port Forward for service %%i
+                    After=network.target
+
+                    [Service]
+                    Type=simple
+                    ExecStart=/bin/bash -c 'IFS=":" read svc port <<< "%i"; exec /usr/local/bin/kubectl port-forward --address=127.0.0.1 svc/$svc $port:$port'
+                    Restart=on-failure
+                    User=root
+
+                    [Install]
+                    WantedBy=multi-user.target
+                    """).encode(),
+                message="Installing systemd unit for port-forwarding",
+            )
+            await run_command(
+                ["wsl.exe", "--user", "root", "--distribution", vm_name, "--", "systemctl", "daemon-reexec"],
+                message="Reloading systemd",
+            )
+            services = json.loads(
+                (
+                    await run_command(
+                        [
+                            "wsl.exe",
+                            "--user",
+                            "root",
+                            "--distribution",
+                            vm_name,
+                            "--",
+                            "k3s",
+                            "kubectl",
+                            "get",
+                            "svc",
+                            "--field-selector=spec.type=LoadBalancer",
+                            "--output=json",
+                        ],
+                        message="Detecting ports to forward",
+                        env={"WSL_UTF8": "1"},
+                    )
+                ).stdout.decode()
+            )
+            for service in services["items"]:
+                name = service["metadata"]["name"]
+                ports = [item["port"] for item in service["spec"]["ports"]]
+                for port in ports:
+                    await run_command(
+                        [
+                            "wsl.exe",
+                            "--user",
+                            "root",
+                            "--distribution",
+                            vm_name,
+                            "--",
+                            "systemctl",
+                            "enable",
+                            "--now",
+                            f"kubectl-port-forward@{name}:{port}.service",
+                        ],
+                        message=f"Starting port-forward for {name}:{port}",
+                    )
+
         with console.status("Waiting for BeeAI platform to be ready...", spinner="dots"):
             await wait_for_api()
 
         console.print("[green]BeeAI platform started successfully![/green]")
+
+        if any("phoenix.enabled=true" in value.lower() for value in set_values_list):
+            console.print(
+                textwrap.dedent("""\
+
+                License Notice:
+                When you enable Phoenix, be aware that Arize Phoenix is licensed under the Elastic License v2 (ELv2),
+                which has specific terms regarding commercial use and distribution. By enabling Phoenix, you acknowledge
+                that you are responsible for ensuring compliance with the ELv2 license terms for your specific use case.
+                Please review the Phoenix license (https://github.com/Arize-ai/phoenix/blob/main/LICENSE) before enabling
+                this feature in production environments.
+                """),
+                style="dim",
+            )
 
 
 @app.command("stop")
@@ -598,7 +854,8 @@ async def import_image(
                 / "beeai"
             )
         else:
-            image_directory = pathlib.Path("/tmp/images")
+            image_directory = pathlib.Path("/tmp/beeai")
+
         console.print(f"image_directory: [green] {image_directory} [/green]")
         image_filename = str(uuid.uuid4())
         save_path = pathlib.Path(f"{Configuration().home}/images")
@@ -677,7 +934,7 @@ async def exec(
 ):
     """For debugging -- execute a command inside the BeeAI platform VM."""
     with verbosity(verbose, show_success_status=False):
-        command = command or ["/bin/sh"]
+        command = command or ["/bin/bash"]
         if (await _platform_status(vm_name)) != "running":
             console.print("[red]BeeAI platform is not running.[/red]")
             sys.exit(1)

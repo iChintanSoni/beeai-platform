@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+'use client';
+
 import { Tag } from '@carbon/react';
 import type { ComponentProps } from 'react';
 
@@ -19,7 +21,7 @@ interface Props {
 }
 
 export function BeeBadge({ agent, size }: Props) {
-  const { framework } = agent.metadata;
+  const { framework } = agent.ui;
   return (
     <>
       {framework === BEE_AI_FRAMEWORK_TAG && (

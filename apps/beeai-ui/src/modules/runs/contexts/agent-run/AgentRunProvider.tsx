@@ -3,210 +3,74 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { MessagePart } from 'acp-sdk';
-import isString from 'lodash/isString';
-import { type PropsWithChildren, useCallback, useMemo, useState } from 'react';
+'use client';
+
+import { type PropsWithChildren, useCallback, useMemo, useRef, useState } from 'react';
+import { match } from 'ts-pattern';
 import { v4 as uuid } from 'uuid';
 
+import { buildA2AClient } from '#api/a2a/client.ts';
+import type { ChatRun } from '#api/a2a/types.ts';
 import { getErrorCode } from '#api/utils.ts';
 import { useHandleError } from '#hooks/useHandleError.ts';
 import { useImmerWithGetter } from '#hooks/useImmerWithGetter.ts';
 import type { Agent } from '#modules/agents/api/types.ts';
-import type { TrajectoryMetadata } from '#modules/runs/api/types.ts';
-import {
-  type AgentMessage,
-  type ChatMessage,
-  type CitationTransform,
-  MessageContentTransformType,
-  MessageStatus,
-} from '#modules/runs/chat/types.ts';
-import { prepareMessageFiles } from '#modules/runs/files/utils.ts';
-import { useRunAgent } from '#modules/runs/hooks/useRunAgent.ts';
-import { SourcesProvider } from '#modules/runs/sources/contexts/SourcesProvider.tsx';
-import { extractSources, prepareMessageSources } from '#modules/runs/sources/utils.ts';
-import { createTrajectoryMetadata, prepareTrajectories } from '#modules/runs/trajectory/utils.ts';
-import { Role, type RunStats } from '#modules/runs/types.ts';
-import {
-  applyContentTransforms,
-  createCitationTransform,
-  createFileMessageParts,
-  createImageTransform,
-  createMessagePart,
-  extractValidUploadFiles,
-  isAgentMessage,
-  isArtifactPart,
-  mapToMessageFiles,
-} from '#modules/runs/utils.ts';
-import { isImageContentType } from '#utils/helpers.ts';
+import { FileUploadProvider } from '#modules/files/contexts/FileUploadProvider.tsx';
+import { useFileUpload } from '#modules/files/contexts/index.ts';
+import { convertFilesToUIFileParts, transformFilePart } from '#modules/files/utils.ts';
+import { Role } from '#modules/messages/api/types.ts';
+import type { UIAgentMessage, UIMessage, UIUserMessage } from '#modules/messages/types.ts';
+import { UIMessagePartKind, UIMessageStatus } from '#modules/messages/types.ts';
+import { isAgentMessage, sortMessageParts } from '#modules/messages/utils.ts';
+import type { RunStats } from '#modules/runs/types.ts';
+import { SourcesProvider } from '#modules/sources/contexts/SourcesProvider.tsx';
+import { getMessageSourcesMap, transformSourcePart } from '#modules/sources/utils.ts';
 
-import { useFileUpload } from '../../files/contexts';
+import { MessagesProvider } from '../../../messages/contexts/MessagesProvider';
 import { AgentStatusProvider } from '../agent-status/AgentStatusProvider';
-import { MessagesProvider } from '../messages/MessagesProvider';
 import { AgentRunContext } from './agent-run-context';
-
-type MessagePartMetadata = NonNullable<MessagePart['metadata']>;
 
 interface Props {
   agent: Agent;
 }
 
-export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
-  const [messages, getMessages, setMessages] = useImmerWithGetter<ChatMessage[]>([]);
+export function AgentRunProviders({ agent, children }: PropsWithChildren<Props>) {
+  return (
+    <FileUploadProvider allowedContentTypes={agent.defaultInputModes}>
+      <AgentRunProvider agent={agent}>{children}</AgentRunProvider>
+    </FileUploadProvider>
+  );
+}
+
+function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
+  const [conversationId, setConversationId] = useState<string>(uuid());
+  const [messages, getMessages, setMessages] = useImmerWithGetter<UIMessage[]>([]);
+  const [input, setInput] = useState<string>();
+  const [isPending, setIsPending] = useState(false);
   const [stats, setStats] = useState<RunStats>();
+
+  const pendingSubscription = useRef<() => void>(undefined);
+  const pendingRun = useRef<ChatRun>(undefined);
 
   const errorHandler = useHandleError();
 
+  const a2aAgentClient = useMemo(() => buildA2AClient(agent.provider.id), [agent.provider.id]);
   const { files, clearFiles } = useFileUpload();
-  const { input, isPending, runAgent, stopAgent, reset } = useRunAgent({
-    onBeforeRun: () => {
-      setStats({ startTime: Date.now() });
-    },
-    onMessagePart: (event) => {
-      const { part } = event;
-      const { content, content_type, content_url, metadata } = part;
-
-      const isArtifact = isArtifactPart(part);
-      const hasFile = isString(content_url);
-      const hasImage = hasFile && isImageContentType(content_type);
-      const hasContentToDisplay = isString(content) && (content_type === 'text/plain' || hasImage);
-
-      if (isArtifact) {
-        if (hasFile) {
-          updateLastAgentMessage((message) => {
-            message.files = prepareMessageFiles({ files: message.files, data: part });
-          });
-        }
-      }
-
-      if (hasContentToDisplay) {
-        updateLastAgentMessage((message) => {
-          message.rawContent += content;
-        });
-      }
-
-      if (hasImage) {
-        updateLastAgentMessage((message) => {
-          message.contentTransforms.push(
-            createImageTransform({
-              imageUrl: content_url,
-              insertAt: message.rawContent.length,
-            }),
-          );
-        });
-      }
-
-      if (metadata) {
-        processMetadata(metadata as MessagePartMetadata);
-      }
-
-      updateLastAgentMessage((message) => {
-        message.content = applyContentTransforms({
-          rawContent: message.rawContent,
-          transforms: message.contentTransforms,
-        });
-      });
-    },
-    onGeneric: (event) => {
-      const metadata = createTrajectoryMetadata(event.generic);
-
-      if (metadata) {
-        processMetadata(metadata as TrajectoryMetadata);
-      }
-    },
-    onMessageCompleted: () => {
-      updateLastAgentMessage((message) => {
-        message.status = MessageStatus.Completed;
-      });
-    },
-    onRunCompleted: () => {
-      updateLastAgentMessage((message) => {
-        if (message.status !== MessageStatus.Completed) {
-          message.status = MessageStatus.Failed;
-        }
-      });
-    },
-    onStop: () => {
-      updateLastAgentMessage((message) => {
-        message.status = MessageStatus.Aborted;
-      });
-    },
-    onDone: () => {
-      handleDone();
-    },
-    onRunFailed: (event) => {
-      const { error } = event.run;
-
-      handleError(error);
-
-      if (error) {
-        updateLastAgentMessage((message) => {
-          message.error = error;
-          message.status = MessageStatus.Failed;
-        });
-
-        const metadata = createTrajectoryMetadata({ message: error.message });
-
-        if (metadata) {
-          processMetadata(metadata as TrajectoryMetadata);
-        }
-      }
-    },
-  });
 
   const updateLastAgentMessage = useCallback(
-    (updater: (message: AgentMessage) => void) => {
+    (updater: (message: UIAgentMessage) => void) => {
       setMessages((messages) => {
         const lastMessage = messages.at(-1);
 
         if (lastMessage && isAgentMessage(lastMessage)) {
           updater(lastMessage);
+        } else {
+          throw new Error('There is no last agent message.');
         }
       });
     },
     [setMessages],
   );
-
-  const processMetadata = useCallback(
-    (metadata: MessagePartMetadata) => {
-      switch (metadata.kind) {
-        case 'citation':
-          updateLastAgentMessage((message) => {
-            const { sources, newSource } = prepareMessageSources({ message, metadata });
-
-            message.sources = sources;
-
-            if (newSource == null) {
-              return;
-            }
-
-            const citationTransformGroup = message.contentTransforms.find(
-              (transform): transform is CitationTransform =>
-                transform.kind === MessageContentTransformType.Citation &&
-                transform.startIndex === newSource.startIndex,
-            );
-
-            if (citationTransformGroup) {
-              citationTransformGroup.sources.push(newSource);
-            } else {
-              message.contentTransforms.push(createCitationTransform({ source: newSource }));
-            }
-          });
-
-          break;
-        case 'trajectory':
-          updateLastAgentMessage((message) => {
-            message.trajectories = prepareTrajectories({ trajectories: message.trajectories, data: metadata });
-          });
-
-          break;
-      }
-    },
-    [updateLastAgentMessage],
-  );
-
-  const handleDone = useCallback(() => {
-    setStats((stats) => ({ ...stats, endTime: Date.now() }));
-  }, []);
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -215,56 +79,119 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
       errorHandler(error, {
         errorToast: { title: errorCode?.toString() ?? 'Failed to run agent.', includeErrorMessage: true },
       });
+
+      if (error instanceof Error) {
+        updateLastAgentMessage((message) => {
+          message.error = error;
+          message.status = UIMessageStatus.Failed;
+        });
+      }
     },
-    [errorHandler],
+    [errorHandler, updateLastAgentMessage],
   );
 
-  const cancel = useCallback(() => {
-    stopAgent();
-  }, [stopAgent]);
+  const cancel = useCallback(async () => {
+    if (pendingRun.current && pendingSubscription.current) {
+      updateLastAgentMessage((message) => {
+        message.status = UIMessageStatus.Aborted;
+      });
+
+      pendingSubscription.current();
+      await pendingRun.current.cancel();
+    } else {
+      throw new Error('No run in progress');
+    }
+  }, [updateLastAgentMessage]);
 
   const clear = useCallback(() => {
-    reset();
     setMessages([]);
     setStats(undefined);
     clearFiles();
-  }, [reset, setMessages, clearFiles]);
+    setConversationId(uuid());
+    setIsPending(false);
+    setInput(undefined);
+    pendingRun.current = undefined;
+  }, [setMessages, clearFiles, setConversationId]);
 
   const run = useCallback(
     async (input: string) => {
-      const uploadFiles = extractValidUploadFiles(files);
-      const messageParts = [createMessagePart({ content: input }), ...createFileMessageParts(uploadFiles)];
-      const userFiles = mapToMessageFiles(uploadFiles);
+      if (pendingRun.current || pendingSubscription.current) {
+        throw new Error('A run is already in progress');
+      }
 
-      setMessages((messages) => {
-        messages.push({
-          key: uuid(),
-          role: Role.User,
-          content: input,
-          files: userFiles,
-        });
-        messages.push({
-          key: uuid(),
-          role: Role.Agent,
-          content: '',
-          rawContent: '',
-          contentTransforms: [],
-          status: MessageStatus.InProgress,
-        });
-      });
-
-      clearFiles();
+      setInput(input);
+      setIsPending(true);
+      setStats({ startTime: Date.now() });
 
       try {
-        await runAgent({ agent, messageParts });
+        setMessages((messages) => {
+          const userMessage: UIUserMessage = {
+            id: uuid(),
+            role: Role.User,
+            parts: [{ kind: UIMessagePartKind.Text, id: uuid(), text: input }, ...convertFilesToUIFileParts(files)],
+          };
+          const agentMessage: UIAgentMessage = {
+            id: uuid(),
+            role: Role.Agent,
+            parts: [],
+            status: UIMessageStatus.InProgress,
+          };
+
+          messages.push(userMessage, agentMessage);
+        });
+
+        const run = a2aAgentClient.chat({
+          text: input,
+          files,
+          contextId: conversationId,
+        });
+        pendingRun.current = run;
+
+        pendingSubscription.current = run.subscribe((parts) => {
+          parts.forEach((part) => {
+            updateLastAgentMessage((message) => {
+              match(part)
+                .with({ kind: UIMessagePartKind.File }, (part) => {
+                  const transformedPart = transformFilePart(part, message);
+
+                  if (transformedPart) {
+                    message.parts.push(transformedPart);
+                  } else {
+                    message.parts.push(part);
+                  }
+                })
+                .with({ kind: UIMessagePartKind.Source }, (part) => {
+                  const transformedPart = transformSourcePart(part);
+
+                  message.parts.push(part, transformedPart);
+                })
+                .otherwise((part) => {
+                  message.parts.push(part);
+                });
+
+              message.parts = sortMessageParts(message.parts);
+            });
+          });
+        });
+
+        await run.done;
+
+        updateLastAgentMessage((message) => {
+          message.status = UIMessageStatus.Completed;
+        });
       } catch (error) {
         handleError(error);
+      } finally {
+        setIsPending(false);
+        setStats((stats) => ({ ...stats, endTime: Date.now() }));
+        pendingRun.current = undefined;
+        pendingSubscription.current = undefined;
       }
     },
-    [agent, files, setMessages, clearFiles, runAgent, handleError],
+    [a2aAgentClient, files, conversationId, handleError, updateLastAgentMessage, setMessages],
   );
 
-  const sourcesData = useMemo(() => extractSources(messages), [messages]);
+  const sources = useMemo(() => getMessageSourcesMap(messages), [messages]);
 
   const contextValue = useMemo(
     () => ({
@@ -281,7 +208,7 @@ export function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) 
 
   return (
     <AgentStatusProvider agent={agent} isMonitorStatusEnabled>
-      <SourcesProvider sourcesData={sourcesData}>
+      <SourcesProvider sources={sources}>
         <MessagesProvider messages={getMessages()}>
           <AgentRunContext.Provider value={contextValue}>{children}</AgentRunContext.Provider>
         </MessagesProvider>

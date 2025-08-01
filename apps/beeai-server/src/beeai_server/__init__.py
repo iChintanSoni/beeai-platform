@@ -32,6 +32,13 @@ JWKS_URL = None
 if not configuration.auth.disable_auth:
     JWKS_URL = configuration.auth.jwks_url
 
+configuration: Configuration = get_configuration()
+
+JWKS_URL = None
+
+if not configuration.auth.disable_auth:
+    JWKS_URL = configuration.auth.jwks_url
+
 
 def serve():
     config = get_configuration()

@@ -7,14 +7,22 @@ authors = [
 ]
 requires-python = ">=3.13,<4"
 dependencies = [
-    "acp-sdk==1.0.0",
-    "beeai-framework[duckduckgo,wikipedia]~=0.1.29",
+    "beeai-framework[duckduckgo,wikipedia]~=0.1.31",
+    "beeai-sdk",
     "openinference-instrumentation-beeai>=0.1.6",
     "pydantic-settings>=2.9.0",
+    "sqlalchemy>=2.0.41",
+    "uvicorn>=0.35.0",
 ]
 
+[tool.ruff]
+line-length = 120
+
+[tool.uv.sources]
+beeai-sdk = { path = "../../../../apps/beeai-sdk", editable = true }
+
 [project.scripts]
-server = "chat.agent:run"
+server = "chat.agent:serve"
 
 [build-system]
 requires = [

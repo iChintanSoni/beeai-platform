@@ -3,18 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Agent } from '#modules/agents/api/types.ts';
-
-import type { MessagePart } from './api/types';
-
-export enum Role {
-  User = 'user',
-  Agent = 'agent',
-}
-
-export interface RunAgentParams {
-  agent: Agent;
-  messageParts: MessagePart[];
+export interface RunAgentFormValues {
+  input: string;
+  tools?: string[];
 }
 
 export interface RunStats {

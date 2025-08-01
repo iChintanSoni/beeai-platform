@@ -3,13 +3,6 @@
 ["beeai-web:check"]
 depends = ["beeai-web:check:*"]
 
-["beeai-web:check:next"]
-depends = ["common:setup:pnpm"]
-dir = "{{config_root}}/apps/beeai-web"
-run = "pnpm next lint"
-sources = ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
-outputs = { auto = true }
-
 ["beeai-web:check:prettier"]
 depends = ["common:setup:pnpm"]
 dir = "{{config_root}}/apps/beeai-web"
@@ -17,15 +10,15 @@ run = "pnpm prettier --log-level silent --check src"
 sources = ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx", "src/**/*.html", "src/**/*.css", "src/**/*.scss"]
 outputs = { auto = true }
 
-["beeai-web:check:eslint"]
+["beeai-web:check:next"]
 depends = ["common:setup:pnpm"]
 dir = "{{config_root}}/apps/beeai-web"
-run = "pnpm eslint src"
+run = "pnpm next lint"
 sources = ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
 outputs = { auto = true }
 
 ["beeai-web:check:tsc"]
-depends = ["common:setup:pnpm", "beeai-web:check:next"]
+depends = ["common:setup:pnpm"]
 dir = "{{config_root}}/apps/beeai-web"
 run = "pnpm tsc --noEmit -p tsconfig.json"
 sources = ["src/**/*.ts", "src/**/*.tsx"]
@@ -50,10 +43,10 @@ run = "pnpm prettier --log-level silent --write src"
 sources = ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx", "src/**/*.html", "src/**/*.css", "src/**/*.scss"]
 outputs = { auto = true }
 
-["beeai-web:fix:eslint"]
+["beeai-web:fix:next"]
 depends = ["common:setup:pnpm"]
 dir = "{{config_root}}/apps/beeai-web"
-run = "pnpm eslint --fix src"
+run = "pnpm next lint --fix"
 sources = ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
 outputs = { auto = true }
 
@@ -67,29 +60,28 @@ outputs = { auto = true }
 # run
 
 ["beeai-web:run"]
-description = "NOTE: You also need to have `beeai-server` running for the backend"
-depends = ["common:setup:pnpm"]
+depends = ["beeai-web:build:nextjs"]
+env.NODE_OPTIONS = "--no-experimental-global-navigator"
 dir = "{{config_root}}/apps/beeai-web"
-run = "pnpm dev"
+run = "pnpm next start"
+
+["beeai-web:run:dev"]
+depends = ["common:setup:pnpm"]
+env.NODE_OPTIONS = "--no-experimental-global-navigator"
+dir = "{{config_root}}/apps/beeai-web"
+run = "pnpm next dev"
 
 # build
 
 ["beeai-web:build"]
+depends = ["beeai-web:build:*"]
+dir = "{{config_root}}"
+run = "docker build -t ghcr.io/i-am-bee/beeai-platform/beeai-web:local -f ./apps/beeai-web/Dockerfile --load ."
+
+["beeai-web:build:nextjs"]
 depends = ["common:setup:pnpm"]
 dir = "{{config_root}}/apps/beeai-web"
-run = "pnpm build"
-sources = ["*.json", "*.js", "index.html", "src/**/*.tsx", "src/**/*.ts"]
+env.NODE_OPTIONS = "--no-experimental-global-navigator"
+run = "pnpm next build"
+sources = ["*.json", "*.js", "*.mjs", "*.ts", "public/**/*", "src/**/*"]
 outputs = { auto = true }
-
-# preview
-
-["beeai-web:preview"]
-depends = ["common:setup:pnpm"]
-dir = "{{config_root}}/apps/beeai-web"
-run = "pnpm preview"
-
-# clean
-
-["beeai-web:clean"]
-dir = "{{config_root}}/apps/beeai-web"
-run = "rm -rf ./.next"

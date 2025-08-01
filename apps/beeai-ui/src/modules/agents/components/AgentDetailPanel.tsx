@@ -3,33 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+'use client';
 import { ArrowUpRight } from '@carbon/icons-react';
 import { SkeletonText, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
-import { useParams } from 'react-router';
 
+import { ExternalLink } from '#components/MarkdownContent/components/ExternalLink.tsx';
 import { MarkdownContent } from '#components/MarkdownContent/MarkdownContent.tsx';
 import { SidePanel } from '#components/SidePanel/SidePanel.tsx';
 import { useApp } from '#contexts/App/index.ts';
 import { SidePanelVariant } from '#contexts/App/types.ts';
+import { useAgentNameFromPath } from '#hooks/useAgentNameFromPath.ts';
 
 import { useAgent } from '../api/queries/useAgent';
-import type { AgentPageParams } from '../types';
-import { getAvailableAgentLinkUrl } from '../utils';
+import { AgentCredits } from './AgentCredits';
 import classes from './AgentDetailPanel.module.scss';
 import { AgentTags } from './AgentTags';
 import { AgentTools } from './AgentTools';
 
 export function AgentDetailPanel() {
-  const { agentName } = useParams<AgentPageParams>();
+  const agentName = useAgentNameFromPath();
   const { data: agent, isPending } = useAgent({ name: agentName ?? '' });
   const { activeSidePanel } = useApp();
 
   if (!agent) return null;
 
-  const { description, metadata } = agent;
-  const agentUrl = getAvailableAgentLinkUrl(metadata, ['homepage', 'documentation', 'source-code']);
-  const authorName = metadata.author?.name;
-  const agentInfo = description ?? metadata.documentation;
+  const {
+    description,
+    ui: { contributors, author, source_code_url },
+  } = agent;
 
   const isOpen = activeSidePanel === SidePanelVariant.AgentDetail;
 
@@ -48,26 +49,22 @@ export function AgentDetailPanel() {
               <div className={classes.info}>
                 {!isPending ? (
                   <>
-                    {(agentInfo || authorName) && (
-                      <div className={classes.infoHeader}>
-                        {agentInfo && <MarkdownContent className={classes.description}>{agentInfo}</MarkdownContent>}
+                    <div className={classes.mainInfo}>
+                      {description && <MarkdownContent className={classes.description}>{description}</MarkdownContent>}
 
-                        {authorName && <p className={classes.author}>By {authorName}</p>}
-                      </div>
-                    )}
+                      {(author || contributors) && <AgentCredits author={author} contributors={contributors} />}
+                    </div>
 
                     <AgentTags agent={agent} />
 
-                    {agentUrl && (
-                      <a href={agentUrl} target="_blank" rel="noreferrer" className={classes.docsLink}>
-                        View more <ArrowUpRight />
-                      </a>
+                    {source_code_url && (
+                      <ExternalLink href={source_code_url} className={classes.docsLink}>
+                        View source code <ArrowUpRight />
+                      </ExternalLink>
                     )}
                   </>
                 ) : (
-                  <>
-                    <SkeletonText paragraph={true} lineCount={5} />
-                  </>
+                  <SkeletonText paragraph={true} lineCount={5} />
                 )}
               </div>
             </TabPanel>

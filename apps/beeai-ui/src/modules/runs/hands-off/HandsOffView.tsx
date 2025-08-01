@@ -5,13 +5,12 @@
 
 import { MainContent } from '#components/layouts/MainContent.tsx';
 import type { Agent } from '#modules/agents/api/types.ts';
+import { SourcesPanel } from '#modules/sources/components/SourcesPanel.tsx';
 
+import { useMessages } from '../../messages/contexts';
+import { RunLandingView } from '../components/RunLandingView';
 import { useAgentRun } from '../contexts/agent-run';
-import { AgentRunProvider } from '../contexts/agent-run/AgentRunProvider';
-import { useMessages } from '../contexts/messages';
-import { FileUploadProvider } from '../files/contexts/FileUploadProvider';
-import { SourcesPanel } from '../sources/components/SourcesPanel';
-import { HandsOffLandingView } from './HandsOffLandingView';
+import { AgentRunProviders } from '../contexts/agent-run/AgentRunProvider';
 import { HandsOffOutputView } from './HandsOffOutputView';
 
 interface Props {
@@ -20,11 +19,9 @@ interface Props {
 
 export function HandsOffView({ agent }: Props) {
   return (
-    <FileUploadProvider allowedContentTypes={agent.input_content_types ?? []}>
-      <AgentRunProvider agent={agent}>
-        <HandsOff />
-      </AgentRunProvider>
-    </FileUploadProvider>
+    <AgentRunProviders agent={agent}>
+      <HandsOff />
+    </AgentRunProviders>
   );
 }
 
@@ -36,7 +33,7 @@ function HandsOff() {
 
   return (
     <>
-      <MainContent spacing="md">{isIdle ? <HandsOffLandingView /> : <HandsOffOutputView />}</MainContent>
+      <MainContent spacing="md">{isIdle ? <RunLandingView /> : <HandsOffOutputView />}</MainContent>
 
       <SourcesPanel />
     </>

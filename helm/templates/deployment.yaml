@@ -170,6 +170,19 @@ spec:
             - name: AGENT_REGISTRY__LOCATIONS__{{ $name | upper }}
               value: {{ $location }}
             {{- end }}
+            {{- if .Values.oidc.enabled }}
+            - name: JWKS_ENDPOINT
+              value: {{ .Values.oidc.jwks_url }}
+            - name: DISCOVERY_ENDPOINT
+              value: {{ .Values.oidc.discovery_url }}
+            - name: IBM_CLIENT_ID
+              value: {{ .Values.oidc.client_id}}
+            - name: IBM_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                   key: AUTH_IBM_SECRET
+                   name: beeai-w3id
+            {{- end}}
             - name: PERSISTENCE__ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

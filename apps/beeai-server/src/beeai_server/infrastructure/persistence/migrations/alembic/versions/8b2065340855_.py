@@ -1,7 +1,7 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""empty message
+"""add text_extractions table and file type enums
 
 Revision ID: 8b2065340855
 Revises: 246e011dd64e
@@ -46,7 +46,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("file_id"),
     )
     file_type_enum.create(op.get_bind())
-    op.add_column("files", sa.Column("file_type", file_type_enum, nullable=False))
+    op.add_column("files", sa.Column("file_type", file_type_enum, nullable=True))
+    op.execute("UPDATE files SET file_type = 'user_upload'")
+    op.alter_column("files", "file_type", nullable=False)
+
     op.add_column("files", sa.Column("parent_file_id", sa.UUID(), nullable=True))
     op.create_foreign_key(None, "files", "files", ["parent_file_id"], ["id"], ondelete="CASCADE")
     # ### end Alembic commands ###

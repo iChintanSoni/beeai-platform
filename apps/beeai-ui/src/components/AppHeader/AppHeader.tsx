@@ -3,15 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+'use client';
 import clsx from 'clsx';
-import { useParams } from 'react-router';
 
 import { MainNav } from '#components/layouts/MainNav.tsx';
+import { useAgentNameFromPath } from '#hooks/useAgentNameFromPath.ts';
 import { useAgent } from '#modules/agents/api/queries/useAgent.ts';
-import type { AgentPageParams } from '#modules/agents/types.ts';
-import { getAgentUiMetadata } from '#modules/agents/utils.ts';
+import { NAV_ITEMS } from '#utils/constants.ts';
 import { isNotNull } from '#utils/helpers.ts';
-import { NAV } from '#utils/vite-constants.ts';
 
 import { Container } from '../layouts/Container';
 import { AgentDetailButton } from './AgentDetailButton';
@@ -23,12 +22,11 @@ interface Props {
 }
 
 export function AppHeader({ className }: Props) {
-  const { agentName } = useParams<AgentPageParams>();
-  const { data: agent } = useAgent({ name: agentName ?? '' });
-  const { display_name } = agent ? getAgentUiMetadata(agent) : {};
+  const agentName = useAgentNameFromPath();
 
-  const hasNav = NAV.length > 0;
-  const showAgent = !hasNav && isNotNull(agent) && isNotNull(display_name);
+  const { data: agent } = useAgent({ name: agentName ?? '' });
+  const hasNav = NAV_ITEMS.length > 0;
+  const showAgent = !hasNav && isNotNull(agent);
 
   return (
     <header className={clsx(classes.root, className)}>
@@ -36,11 +34,11 @@ export function AppHeader({ className }: Props) {
         <div className={clsx(classes.holder, { [classes.hasNav]: hasNav })}>
           <MainNav />
 
-          {hasNav && <AppHeaderNav items={NAV} />}
+          {hasNav && <AppHeaderNav items={NAV_ITEMS} />}
 
           {showAgent && (
             <>
-              <p className={classes.agentName}>{display_name}</p>
+              <p className={classes.agentName}>{agentName}</p>
 
               <div className={classes.agentDetailButtonContainer}>
                 <AgentDetailButton />

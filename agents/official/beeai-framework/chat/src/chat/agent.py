@@ -1,180 +1,218 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
-
 import logging
 import os
-from collections.abc import AsyncGenerator
+import uuid
+from collections import defaultdict
 from textwrap import dedent
 
-import beeai_framework
-from acp_sdk import Annotations, Link, LinkType, Message, Metadata
-from acp_sdk.models import MessagePart
-from acp_sdk.models.platform import AgentToolInfo, PlatformUIAnnotation, PlatformUIType
-from acp_sdk.server import Context, Server
-from beeai_framework.agents.react import ReActAgent, ReActAgentUpdateEvent
-from beeai_framework.backend import AssistantMessage, UserMessage
-from beeai_framework.backend.chat import ChatModel, ChatModelParameters
+from a2a.types import (
+    AgentSkill,
+    Artifact,
+    FilePart,
+    FileWithUri,
+    Message,
+    Part,
+)
+from beeai_framework.adapters.openai import OpenAIChatModel
+from beeai_framework.agents.experimental import (
+    RequirementAgent,
+)
+from beeai_framework.agents.experimental.events import (
+    RequirementAgentSuccessEvent,
+)
+from beeai_framework.backend.types import ChatModelParameters
 from beeai_framework.memory import UnconstrainedMemory
+from beeai_framework.middleware.trajectory import GlobalTrajectoryMiddleware
+from beeai_framework.tools import Tool
 from beeai_framework.tools.search.duckduckgo import DuckDuckGoSearchTool
 from beeai_framework.tools.search.wikipedia import WikipediaTool
-from beeai_framework.tools.tool import AnyTool
 from beeai_framework.tools.weather.openmeteo import OpenMeteoTool
+
+from beeai_sdk.a2a.extensions import AgentDetail, AgentDetailTool
+from beeai_sdk.a2a.types import AgentMessage
+from beeai_sdk.server import Server
+from beeai_sdk.server.context import Context
 from openinference.instrumentation.beeai import BeeAIInstrumentor
-from pydantic import AnyUrl
+
+from chat.tools.files.file_creator import FileCreatorTool, FileCreatorToolOutput
+from chat.tools.files.file_reader import create_file_reader_tool_class
+from chat.tools.files.utils import FrameworkMessage, extract_files, to_framework_message
+from chat.tools.general.act import (
+    ActAlwaysFirstRequirement,
+    ActTool,
+    act_tool_middleware,
+)
+from chat.tools.general.clarification import (
+    ClarificationTool,
+    clarification_tool_middleware,
+)
+from chat.tools.general.current_time import CurrentTimeTool
 
 BeeAIInstrumentor().instrument()
 ## TODO: https://github.com/phoenixframework/phoenix/issues/6224
-logging.getLogger("opentelemetry.exporter.otlp.proto.http._log_exporter").setLevel(
-    logging.CRITICAL
-)
-logging.getLogger("opentelemetry.exporter.otlp.proto.http.metric_exporter").setLevel(
-    logging.CRITICAL
-)
+logging.getLogger("opentelemetry.exporter.otlp.proto.http._log_exporter").setLevel(logging.CRITICAL)
+logging.getLogger("opentelemetry.exporter.otlp.proto.http.metric_exporter").setLevel(logging.CRITICAL)
+
+
+logger = logging.getLogger(__name__)
+
+messages: defaultdict[str, list[Message]] = defaultdict(list)
+framework_messages: defaultdict[str, list[FrameworkMessage]] = defaultdict(list)
 
 server = Server()
 
 
-def to_framework_message(role: str, content: str) -> beeai_framework.backend.Message:
-    match role:
-        case "user":
-            return UserMessage(content)
-        case _:
-            return AssistantMessage(content)
-
-
 @server.agent(
-    metadata=Metadata(
-        annotations=Annotations(
-            beeai_ui=PlatformUIAnnotation(
-                ui_type=PlatformUIType.CHAT,
-                user_greeting="How can I help you?",
-                display_name="Chat",
-                tools=[
-                    AgentToolInfo(
-                        name="Web Search (DuckDuckGo)",
-                        description="Retrieves real-time search results.",
-                    ),
-                    AgentToolInfo(
-                        name="Wikipedia Search",
-                        description="Fetches summaries from Wikipedia.",
-                    ),
-                    AgentToolInfo(
-                        name="Weather Information (OpenMeteo)",
-                        description="Provides real-time weather updates.",
-                    ),
-                ],
-            ),
-        ),
-        programming_language="Python",
-        links=[
-            Link(
-                type=LinkType.SOURCE_CODE,
-                url=AnyUrl(
-                    f"https://github.com/i-am-bee/beeai-platform/blob/{os.getenv('RELEASE_VERSION', 'main')}"
-                    "/agents/official/beeai-framework/chat"
-                ),
-            )
+    name="Chat",
+    documentation_url=(
+        f"https://github.com/i-am-bee/beeai-platform/blob/{os.getenv('RELEASE_VERSION', 'main')}"
+        "/agents/official/beeai-framework/chat"
+    ),
+    version="1.0.0",
+    default_input_modes=["text", "text/plain"],
+    default_output_modes=["text", "text/plain"],
+    detail=AgentDetail(
+        ui_type="chat",
+        user_greeting="How can I help you?",
+        tools=[
+            AgentDetailTool(name="Web Search (DuckDuckGo)", description="Retrieves real-time search results."),
+            AgentDetailTool(name="Wikipedia Search", description="Fetches summaries from Wikipedia."),
+            AgentDetailTool(name="Weather Information (OpenMeteo)", description="Provides real-time weather updates."),
         ],
-        license="Apache 2.0",
         framework="BeeAI",
-        documentation=dedent(
-            """\
-            The agent is an AI-powered conversational system designed to process user messages, maintain context,
-            and generate intelligent responses. Built on the **BeeAI framework**, it leverages memory and external 
-            tools to enhance interactions. It supports real-time web search, Wikipedia lookups, and weather updates,
-            making it a versatile assistant for various applications.
-
-            ## How It Works
-            The agent processes incoming messages and maintains a conversation history using an **unconstrained 
-            memory module**. It utilizes a language model (\`CHAT_MODEL\`) to generate responses and can optionally 
-            integrate external tools for additional functionality.
-
-            It supports:
-            - **Web Search (DuckDuckGo)** – Retrieves real-time search results.
-            - **Wikipedia Search** – Fetches summaries from Wikipedia.
-            - **Weather Information (OpenMeteo)** – Provides real-time weather updates.
-
-            The agent also includes an **event-based streaming mechanism**, allowing it to send partial responses
-            to clients as they are generated.
-
-            ## Key Features
-            - **Conversational AI** – Handles multi-turn conversations with memory.
+    ),
+    skills=[
+        AgentSkill(
+            id="chat",
+            name="Chat",
+            description=dedent(
+                """\
+                The agent is an AI-powered conversational system designed to process user messages, maintain context,
+                and generate intelligent responses. Built on the **BeeAI framework**, it leverages memory and external
+                tools to enhance interactions. It supports real-time web search, Wikipedia lookups, and weather updates,
+                making it a versatile assistant for various applications.
+            
+                ## How It Works
+                The agent processes incoming messages and maintains a conversation history using an **unconstrained
+                memory module**. It utilizes a language model (`CHAT_MODEL`) to generate responses and can optionally
+                integrate external tools for additional functionality.
+            
+                It supports:
+                - **Web Search (DuckDuckGo)** – Retrieves real-time search results.
+                - **Wikipedia Search** – Fetches summaries from Wikipedia.
+                - **Weather Information (OpenMeteo)** – Provides real-time weather updates.
+            
+                The agent also includes an **event-based streaming mechanism**, allowing it to send partial responses
+                to clients as they are generated.
+            
+                ## Key Features
+                - **Conversational AI** – Handles multi-turn conversations with memory.
                 - **Tool Integration** – Supports real-time search, Wikipedia lookups, and weather updates.
-            - **Event-Based Streaming** – Can send partial updates to clients as responses are generated.
-            - **Customizable Configuration** – Users can enable or disable specific tools for enhanced responses.
-            """
-        ),
-        use_cases=[
-            "**Chatbots** – Can be used in AI-powered chat applications with memory.",
-            "**Research Assistance** – Retrieves relevant information from web search and Wikipedia.",
-            "**Weather Inquiries** – Provides real-time weather updates based on location.",
-            "**Agents with Long-Term Memory** – Maintains context across conversations for improved interactions.",
-        ],
-        env=[
-            {
-                "name": "LLM_MODEL",
-                "description": "Model to use from the specified OpenAI-compatible API.",
-            },
-            {
-                "name": "LLM_API_BASE",
-                "description": "Base URL for OpenAI-compatible API endpoint",
-            },
-            {
-                "name": "LLM_API_KEY",
-                "description": "API key for OpenAI-compatible API endpoint",
-            },
-        ],
-    )
+                - **Event-Based Streaming** – Can send partial updates to clients as responses are generated.
+                - **Customizable Configuration** – Users can enable or disable specific tools for enhanced responses.
+                """
+            ),
+            tags=["chat"],
+            examples=["Please find a room in LA, CA, April 15, 2025, checkout date is april 18, 2 adults"],
+        )
+    ],
 )
-async def chat(input: list[Message], context: Context) -> AsyncGenerator:
+async def chat(message: Message, context: Context):
     """
     The agent is an AI-powered conversational system with memory, supporting real-time search, Wikipedia lookups,
     and weather updates through integrated tools.
     """
-
-    # ensure the model is pulled before running
-    os.environ["OPENAI_API_BASE"] = os.getenv(
-        "LLM_API_BASE", "http://localhost:11434/v1"
-    )
-    os.environ["OPENAI_API_KEY"] = os.getenv("LLM_API_KEY", "dummy")
-    llm = ChatModel.from_name(
-        f"openai:{os.getenv('LLM_MODEL', 'llama3.1')}",
-        ChatModelParameters(temperature=0),
-    )
+    extracted_files = await extract_files(history=messages[context.context_id], incoming_message=message)
+    input = to_framework_message(message)
 
     # Configure tools
-    tools: list[AnyTool] = [WikipediaTool(), OpenMeteoTool(), DuckDuckGoSearchTool()]
+    file_reader_tool_class = create_file_reader_tool_class(
+        extracted_files
+    )  # Dynamically created tool input schema based on real provided files ensures that small LLMs can't hallucinate the input
 
-    # Create agent with memory and tools
-    agent = ReActAgent(llm=llm, tools=tools, memory=UnconstrainedMemory())
-
-    history = [message async for message in context.session.load_history()]
-
-    framework_messages = [
-        to_framework_message(message.role, str(message)) for message in history + input
+    tools = [
+        # Auxiliary tools
+        ActTool(),  # Enforces correct thinking sequence by requiring tool selection before execution
+        ClarificationTool(),  # Allows agent to ask clarifying questions when user requirements are unclear
+        # Common tools
+        WikipediaTool(),
+        OpenMeteoTool(),
+        DuckDuckGoSearchTool(),
+        file_reader_tool_class(),
+        FileCreatorTool(),
+        CurrentTimeTool(),
     ]
-    await agent.memory.add_many(framework_messages)
 
-    async for data, event in agent.run():
-        match (data, event.name):
-            case (ReActAgentUpdateEvent(), "partial_update"):
-                update = data.update.value
-                if not isinstance(update, str):
-                    update = update.get_text_content()
-                match data.update.key:
-                    case "thought" | "tool_name" | "tool_input" | "tool_output":
-                        yield {data.update.key: update}
-                    case "final_answer":
-                        yield MessagePart(content=update)
+    requirements = [
+        ActAlwaysFirstRequirement(),  #  Enforces the ActTool to be used before any other tool execution.
+    ]
 
-
-def run():
-    server.run(
-        host=os.getenv("HOST", "127.0.0.1"),
-        port=int(os.getenv("PORT", 8000)),
-        configure_telemetry=True,
+    llm = OpenAIChatModel(
+        model_id=os.getenv("LLM_MODEL", "llama3.1"),
+        api_key=os.getenv("LLM_API_KEY", "dummy"),
+        base_url=os.getenv("LLM_API_BASE", "http://localhost:11434/v1"),
+        parameters=ChatModelParameters(temperature=0.0),
     )
+
+    # Create agent
+    agent = RequirementAgent(
+        llm=llm,
+        tools=tools,
+        memory=UnconstrainedMemory(),
+        requirements=requirements,
+        middlewares=[
+            GlobalTrajectoryMiddleware(included=[Tool]),
+            act_tool_middleware,
+            clarification_tool_middleware,
+        ],
+    )
+
+    messages[context.context_id].append(message)
+    framework_messages[context.context_id].append(input)
+
+    await agent.memory.add_many(framework_messages[context.context_id])
+    final_answer = None
+
+    async for event, meta in agent.run():
+        if not isinstance(event, RequirementAgentSuccessEvent):
+            continue
+
+        last_step = event.state.steps[-1] if event.state.steps else None
+        if last_step and last_step.tool is not None:
+            if isinstance(last_step.output, FileCreatorToolOutput):
+                result = last_step.output.result
+                for file_info in result.files:
+                    yield Artifact(
+                        artifact_id=str(uuid.uuid4()),
+                        name=file_info.display_filename,
+                        parts=[
+                            Part(
+                                root=FilePart(
+                                    file=FileWithUri(
+                                        name=file_info.display_filename,
+                                        mime_type=file_info.content_type,
+                                        uri=str(file_info.url),
+                                    )
+                                )
+                            )
+                        ],
+                    )
+
+        if event.state.answer is not None:
+            # Taking a final answer from the state directly instead of RequirementAgentRunOutput to be able to use the final answer provided by the clarification tool
+            final_answer = event.state.answer
+
+    if final_answer:
+        framework_messages[context.context_id].append(final_answer)
+        message = AgentMessage(text=final_answer.text)
+        messages[context.context_id].append(message)
+        yield message
+
+
+def serve():
+    server.run(host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", 8000)))
 
 
 if __name__ == "__main__":
-    run()
+    serve()

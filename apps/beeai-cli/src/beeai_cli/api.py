@@ -14,8 +14,9 @@ from typing import Any
 
 import httpx
 import psutil
-from acp_sdk.client import Client
-from httpx import HTTPStatusError
+from a2a.client import A2AClient
+from a2a.types import AgentCard
+from httpx import BasicAuth, HTTPStatusError
 from httpx._types import RequestFiles
 
 from beeai_cli.configuration import Configuration
@@ -147,9 +148,9 @@ async def api_stream(
 
 
 @asynccontextmanager
-async def acp_client(use_auth: bool = True) -> AsyncIterator[Client]:
+async def a2a_client(agent_card: AgentCard, use_auth: bool = True) -> AsyncIterator[A2AClient]:
     headers = {}
     if use_auth:
         headers["Authorization"] = await set_auth_header()
-    async with Client(base_url=ACP_URL, headers=headers) as client:
-        yield client
+    async with httpx.AsyncClient(headers=headers) as httpx_client:
+        yield A2AClient(httpx_client=httpx_client, agent_card=agent_card)

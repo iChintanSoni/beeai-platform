@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import { useMemo } from 'react';
 import Markdown from 'react-markdown';
 
-import type { SourceReference } from '#modules/runs/sources/api/types.ts';
+import type { UISourcePart } from '#modules/messages/types.ts';
 
 import { components, type ExtendedComponents } from './components';
 import { CitationLink } from './components/CitationLink/CitationLink';
@@ -15,10 +15,11 @@ import { Code } from './components/Code';
 import classes from './MarkdownContent.module.scss';
 import { rehypePlugins } from './rehype';
 import { remarkPlugins } from './remark';
+import { urlTransform } from './utils';
 
 interface Props {
   isPending?: boolean;
-  sources?: SourceReference[];
+  sources?: UISourcePart[];
   children?: string;
   className?: string;
 }
@@ -35,7 +36,12 @@ export function MarkdownContent({ isPending, sources, className, children }: Pro
 
   return (
     <div className={clsx(classes.root, className)}>
-      <Markdown rehypePlugins={rehypePlugins} remarkPlugins={remarkPlugins} components={extendedComponents}>
+      <Markdown
+        rehypePlugins={rehypePlugins}
+        remarkPlugins={remarkPlugins}
+        components={extendedComponents}
+        urlTransform={urlTransform}
+      >
         {children}
       </Markdown>
     </div>

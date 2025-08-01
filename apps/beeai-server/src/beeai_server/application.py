@@ -7,18 +7,8 @@ from collections.abc import Iterable
 from contextlib import asynccontextmanager
 
 import procrastinate
-from acp_sdk import ACPError
-from acp_sdk.server.errors import (
-    acp_error_handler,
-    catch_all_exception_handler,
-    validation_exception_handler,
-)
-from acp_sdk.server.errors import (
-    http_exception_handler as acp_http_exception_handler,
-)
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.exceptions import RequestValidationError
 from fastapi.responses import ORJSONResponse
 from kink import Container, di, inject
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
@@ -26,10 +16,9 @@ from starlette.exceptions import HTTPException as StarletteHttpException
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
-from beeai_server.api.routes.acp import router as acp_router
+from beeai_server.api.routes.a2a import router as a2a_router
 from beeai_server.api.routes.auth import router as auth_router
 from beeai_server.api.routes.embeddings import router as embeddings_router
 from beeai_server.api.routes.env import router as env_router
@@ -45,9 +34,9 @@ from beeai_server.exceptions import (
     ManifestLoadError,
     PlatformError,
 )
+from beeai_server.middleware.authentication_middleware import JwtAuthBackend, on_auth_error
 from beeai_server.run_workers import run_workers
 from beeai_server.telemetry import INSTRUMENTATION_NAME, shutdown_telemetry
-from beeai_server.utils.fastapi import NoCacheStaticFiles
 
 logger = logging.getLogger(__name__)
 SESSION_KEY = secrets.token_hex(16)
@@ -77,16 +66,10 @@ def register_global_exception_handlers(app: FastAPI):
 
         logger.error("Error during HTTP request: %s", repr(extract_messages(exc)))
 
-        if request.url.path.startswith("/api/v1/acp"):
+        if request.url.path.startswith("/api/v1/a2a"):
             match exc:
-                case ACPError():
-                    return await acp_error_handler(request, exc)
-                case StarletteHttpException():
-                    return await acp_http_exception_handler(request, exc)
-                case RequestValidationError():
-                    return await validation_exception_handler(request, exc)
                 case _:
-                    return await catch_all_exception_handler(request, exc)
+                    ...  # TODO
 
         match exc:
             case HTTPException():
@@ -97,24 +80,9 @@ def register_global_exception_handlers(app: FastAPI):
 
 
 def mount_routes(app: FastAPI):
-    static_directory = pathlib.Path(__file__).parent.joinpath("static")
-    if not static_directory.joinpath("index.html").exists():  # this check is for running locally
-        raise RuntimeError("Could not find static files -- ensure that beeai-ui is built: `mise build:beeai-ui`")
-
-    ui_app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-    ui_app.mount("/", NoCacheStaticFiles(directory=static_directory, html=True))
-    ui_app.add_exception_handler(
-        404,
-        lambda _req, _exc: FileResponse(
-            static_directory / "index.html",
-            status_code=200,
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        ),
-    )
-
     server_router = APIRouter()
     server_router.include_router(auth_router, prefix="", tags=["auth"])
-    server_router.include_router(acp_router, prefix="/acp")
+    server_router.include_router(a2a_router, prefix="/a2a")
     server_router.include_router(provider_router, prefix="/providers", tags=["providers"])
     server_router.include_router(env_router, prefix="/variables", tags=["variables"])
     server_router.include_router(files_router, prefix="/files", tags=["files"])
@@ -124,7 +92,10 @@ def mount_routes(app: FastAPI):
     server_router.include_router(vector_stores_router, prefix="/vector_stores", tags=["vector_stores"])
     app.mount("/healthcheck", lambda: "OK")
     app.include_router(server_router, prefix="/api/v1", tags=["provider"])
-    app.mount("/", ui_app)
+
+    @app.get("/healthcheck")
+    async def healthcheck():
+        return "OK"
 
 
 def register_telemetry():

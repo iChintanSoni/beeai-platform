@@ -23,8 +23,8 @@ export function useFilteredAgents({ agents, filters }: Props) {
 
     return agents
       ?.filter((agent) => {
-        const { name, description, metadata } = agent;
-        const { framework, programming_language, license, documentation } = metadata;
+        const { name, description, ui } = agent;
+        const { framework, programming_language, license } = ui;
 
         if (frameworks.length && !frameworks.includes(framework ?? '')) {
           return false;
@@ -41,9 +41,8 @@ export function useFilteredAgents({ agents, filters }: Props) {
         if (searchRegex) {
           const nameMatch = searchRegex.test(name);
           const descriptionMatch = description ? searchRegex.test(description) : false;
-          const documentationMatch = documentation ? searchRegex.test(documentation) : false;
 
-          if (!nameMatch && !descriptionMatch && !documentationMatch) {
+          if (!nameMatch && !descriptionMatch) {
             return false;
           }
         }
