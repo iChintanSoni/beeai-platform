@@ -125,7 +125,7 @@ class Server:
         input_content_types: list[str] | None = None,
         output_content_types: list[str] | None = None,
         ui: BeeAIUI | None = None,
-        skills: list[AgentSkill] = []
+        skills: list[AgentSkill] = [],
     ) -> Callable:
         def decorator(fn: Callable) -> Callable:
             runnable_agent = agent_decorator(
@@ -134,7 +134,7 @@ class Server:
                 input_content_types=input_content_types,
                 output_content_types=output_content_types,
                 ui=ui,
-                skills=skills
+                skills=skills,
             )(fn)
             self.agent_card = runnable_agent
             self.agent = DefaultAgentExecutor(runnable_agent)
@@ -154,11 +154,11 @@ class Server:
 
         app = server.build()
         app.add_middleware(
-          CORSMiddleware,
-          allow_origins=["*"],
-          allow_credentials=True,
-          allow_methods=["*"],
-          allow_headers=["*"],
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
 
         uvicorn.run(app, host="0.0.0.0", port=8001)

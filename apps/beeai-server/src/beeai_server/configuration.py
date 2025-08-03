@@ -67,18 +67,33 @@ class AgentRegistryConfiguration(BaseModel):
 
 
 class AuthConfiguration(BaseModel):
+    admin_password: Secret[str] | None = Field(default=None)
+    disable_auth: bool = False
+
+    @model_validator(mode="after")
+    def validate_auth(self):
+        if self.disable_auth:
+            logger.critical("Authentication is disabled! This is suitable only for local (desktop) deployment.")
+            return self
+        if self.admin_password is None:
+            raise ValueError("Admin password must be provided if authentication is enabled")
+        return self
+
+
+class OidcConfiguration(BaseModel):
     client_id: str | None = None
     client_secret: Secret[str] | None = Field(default=None)
     discovery_url: AnyUrl | None = None
     jwks_url: AnyUrl | None = None
     disable_auth: bool = False
+    admin_emails: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_auth(self):
         if self.disable_auth:
             logger.critical("Oauth Authentication is disabled! This is suitable only for local development.")
             return self
-        required = ["client_id", "client_secret", "discovery_url", "jwks_url"]
+        required = ["client_id", "client_secret", "discovery_url", "jwks_url", "admin_emails"]
         for field in required:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} is required for Oauth Authentication if Oauth Auth is enabled")
@@ -154,6 +169,7 @@ class Configuration(BaseSettings):
     )
 
     auth: AuthConfiguration = Field(default_factory=AuthConfiguration)
+    oidc: OidcConfiguration = Field(default_factory=OidcConfiguration)
     logging: LoggingConfiguration = Field(default_factory=LoggingConfiguration)
     agent_registry: AgentRegistryConfiguration = Field(default_factory=AgentRegistryConfiguration)
     oci_registry: dict[str, OCIRegistryConfiguration] = Field(default_factory=dict)

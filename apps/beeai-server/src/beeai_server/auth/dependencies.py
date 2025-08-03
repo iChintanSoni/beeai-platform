@@ -3,7 +3,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, Security
+from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyCookie, APIKeyHeader
 from kink import di
 
@@ -31,7 +31,7 @@ async def get_authenticated_user(
     cookie_token: Annotated[str | None, Security(api_key_cookie)],
     header_token: Annotated[str | None, Security(api_key_header)],
 ) -> AuthenticatedUser:
-    if configuration.auth.disable_auth:
+    if configuration.oidc.disable_auth:
         # Bypass OIDC validation — return a default user for dev/testing mode
         return AuthenticatedUser(
             uid="dev-user",
@@ -43,22 +43,32 @@ async def get_authenticated_user(
         token = extract_token(header_token, cookie_token)
     except Exception as e:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid Authorization header: {e}",
         ) from e
     if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     claims = decode_jwt_token(token)
     if not claims:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    email = claims.get("email")
+    is_admin = email in configuration.oidc.admin_emails
 
     return AuthenticatedUser(
         uid=claims.get("sub"),
-        is_admin=False,
+        is_admin=is_admin,
         display_name=claims.get("displayName"),
         email=claims.get("email"),
     )
 
 
+def check_admin(user: Annotated[AuthenticatedUser, Depends(get_authenticated_user)]) -> AuthenticatedUser:
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    return user
+
+
 AuthenticatedUserDependency = Annotated[AuthenticatedUser, Depends(get_authenticated_user)]
+AdminUserDependency = Annotated[str, Depends(check_admin)]

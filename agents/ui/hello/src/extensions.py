@@ -9,15 +9,27 @@ class BeeAIUITool(BaseModel):
     name: str
     description: str
 
+
 class AgentDetailContributor(BaseModel):
     name: str
     email: str | None = None
     url: str | None = None
 
+
 class BeeAIUI(AgentExtension):
-    def __init__(self, ui_type: str, user_greeting: str, tools: list[BeeAIUITool], framework: str, license: str, programming_language: str, 
-                 source_code_url: str, container_image_url: str | None = None, author: AgentDetailContributor | None = None, 
-                 contributors: list[AgentDetailContributor] | None = None):
+    def __init__(
+        self,
+        ui_type: str,
+        user_greeting: str,
+        tools: list[BeeAIUITool],
+        framework: str,
+        license: str,
+        programming_language: str,
+        source_code_url: str,
+        container_image_url: str | None = None,
+        author: AgentDetailContributor | None = None,
+        contributors: list[AgentDetailContributor] | None = None,
+    ):
         super().__init__(
             uri="https://a2a-extensions.beeai.dev/ui/agent-detail/v1",
             params={
@@ -30,5 +42,6 @@ class BeeAIUI(AgentExtension):
                 "source_code_url": source_code_url,
                 "container_image_url": container_image_url,
                 "author": author,
-                "contributors": contributors,            }
+                "contributors": contributors,
+            },
         )

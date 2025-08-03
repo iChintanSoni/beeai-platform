@@ -23,15 +23,15 @@ class AuthService:
         self._oauth = self._build_oauth()
 
     def _build_oauth(self) -> OAuth | None:
-        if self._config.auth.disable_auth:
+        if self._config.oidc.disable_auth:
             return None
         oauth = OAuth()
         oauth.register(
             name="auth_provider",
-            client_id=self._config.auth.client_id,
-            client_secret=self._config.auth.client_secret._secret_value,
-            server_metadata_url=str(self._config.auth.discovery_url),
-            jwks_url=str(self._config.auth.jwks_url),
+            client_id=self._config.oidc.client_id,
+            client_secret=self._config.oidc.client_secret._secret_value,
+            server_metadata_url=str(self._config.oidc.discovery_url),
+            jwks_url=str(self._config.oidc.jwks_url),
             client_kwargs={"scope": "openid email profile"},
         )
         return oauth
