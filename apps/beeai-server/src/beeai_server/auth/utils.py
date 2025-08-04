@@ -19,9 +19,9 @@ configuration: ConfigurationDependency = get_configuration()
 
 
 # Initialize JWKS only if OIDC is enabled
-if not configuration.auth.disable_auth:
-    audience = configuration.auth.client_id
-    JWKS_URL = configuration.auth.jwks_url
+if not configuration.oidc.disable_oidc:
+    audience = configuration.oidc.client_id
+    JWKS_URL = configuration.oidc.jwks_url
     JWKS_FOLDER = "/tmp/jwks"
     JWKS_FILE = os.path.join(JWKS_FOLDER, "pubkeys.json")
 
@@ -71,6 +71,8 @@ def extract_token(
 def decode_jwt_token(token: str, jwks: dict | None = None, aud: str | None = None) -> dict | None:
     jwks = jwks or jwks_dict
     aud = aud or audience
+    logger.debug("aud=%s", str(aud))
+    logger.debug("audience=%s", str(audience))
     # Decode JWT using keys from JWKS
     for pub_key in jwks.get("keys", []):
         try:
