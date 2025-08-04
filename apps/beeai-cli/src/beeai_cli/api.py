@@ -52,13 +52,12 @@ def server_process_status(
 
 
 async def set_auth_header():
-    if not config.auth_disabled:
-        token = await load_token()
-        if not token:
-            raise RuntimeError("No token found. Please run `beeai login` first.")
-        if not token.get("id_token"):
-            raise RuntimeError("No id token found. Please run `beeai login` first.")
-        return f"Bearer {token.get('id_token')}"
+    token = await load_token()
+    if not token:
+        raise RuntimeError("No token found. Please run `beeai login` first.")
+    if not token.get("id_token"):
+        raise RuntimeError("No id token found. Please run `beeai login` first.")
+    return f"Bearer {token['id_token']}"
 
 
 async def wait_for_api(initial_delay_seconds=5, wait: timedelta = timedelta(minutes=20)):
@@ -81,7 +80,7 @@ async def api_request(
     use_auth: bool = True,
 ) -> dict | None:
     headers = {}
-    if use_auth:
+    if not config.auth_disabled and use_auth:
         headers["Authorization"] = await set_auth_header()
 
     """Make an API request to the server."""
@@ -117,7 +116,7 @@ async def api_stream(
     use_auth: bool = True,
 ) -> AsyncIterator[dict[str, Any]]:
     headers = {}
-    if use_auth:
+    if not config.auth_disabled and use_auth:
         headers["Authorization"] = await set_auth_header()
 
     """Make a streaming API request to the server."""
@@ -150,7 +149,7 @@ async def api_stream(
 @asynccontextmanager
 async def a2a_client(agent_card: AgentCard, use_auth: bool = True) -> AsyncIterator[A2AClient]:
     headers = {}
-    if use_auth:
+    if not config.auth_disabled and use_auth:
         headers["Authorization"] = await set_auth_header()
     async with httpx.AsyncClient(headers=headers) as httpx_client:
         yield A2AClient(httpx_client=httpx_client, agent_card=agent_card)
