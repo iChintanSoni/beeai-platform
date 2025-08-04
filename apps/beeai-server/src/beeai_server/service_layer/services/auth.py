@@ -23,7 +23,7 @@ class AuthService:
         self._oauth = self._build_oauth()
 
     def _build_oauth(self) -> OAuth | None:
-        if self._config.oidc.disable_auth:
+        if self._config.oidc.disable_oidc:
             return None
         oauth = OAuth()
         oauth.register(
