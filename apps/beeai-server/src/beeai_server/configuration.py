@@ -85,12 +85,12 @@ class OidcConfiguration(BaseModel):
     client_secret: Secret[str] | None = Field(default=None)
     discovery_url: AnyUrl | None = None
     jwks_url: AnyUrl | None = None
-    disable_auth: bool = False
+    disable_oidc: bool = False
     admin_emails: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_auth(self):
-        if self.disable_auth:
+        if self.disable_oidc:
             logger.critical("Oauth Authentication is disabled! This is suitable only for local development.")
             return self
         required = ["client_id", "client_secret", "discovery_url", "jwks_url", "admin_emails"]

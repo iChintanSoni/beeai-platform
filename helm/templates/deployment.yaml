@@ -56,6 +56,8 @@ spec:
           env:
             - name: AUTH__DISABLE_AUTH
               value: "true"
+            - name: OIDC__DISABLE_OIDC
+              value: "true"
             - name: LOGGING__LEVEL_SQLALCHEMY
               value: INFO
             - name: PERSISTENCE__ENCRYPTION_KEY
@@ -81,6 +83,8 @@ spec:
           env:
             - name: AUTH__DISABLE_AUTH
               value: "true"
+            - name: OIDC__DISABLE_OIDC
+              value: "true"
             - name: LOGGING__LEVEL_SQLALCHEMY
               value: INFO
             - name: PERSISTENCE__ENCRYPTION_KEY
@@ -104,6 +108,8 @@ spec:
           {{- end }}
           env:
             - name: AUTH__DISABLE_AUTH
+              value: "true"
+            - name: OIDC__DISABLE_OIDC
               value: "true"
             - name: PERSISTENCE__ENCRYPTION_KEY
               value: "dummy"
@@ -170,19 +176,6 @@ spec:
             - name: AGENT_REGISTRY__LOCATIONS__{{ $name | upper }}
               value: {{ $location }}
             {{- end }}
-            {{- if .Values.oidc.enabled }}
-            - name: JWKS_ENDPOINT
-              value: {{ .Values.oidc.jwks_url }}
-            - name: DISCOVERY_ENDPOINT
-              value: {{ .Values.oidc.discovery_url }}
-            - name: IBM_CLIENT_ID
-              value: {{ .Values.oidc.client_id}}
-            - name: IBM_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                   key: AUTH_IBM_SECRET
-                   name: beeai-w3id
-            {{- end}}
             - name: PERSISTENCE__ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -197,14 +190,18 @@ spec:
             - name: AUTH__DISABLE_AUTH
               value: "true"
             {{- end }}
-            {{- if .Values.auth.enabled }}
-            - name: AUTH__CLIENT_ID
-              value: {{ required "Missing required value: auth.client_id" .Values.auth.client_id | quote }}
-            - name: AUTH__DISCOVERY_URL
-              value: {{ required "Missing required value: auth.discovery_url" .Values.auth.discovery_url | quote }}
-            - name: AUTH__JWKS_URL
-              value: {{ required "Missing required value: auth.jwks_url" .Values.auth.jwks_url | quote }}
-            - name: AUTH__CLIENT_SECRET
+            {{- if not .Values.oidc.enabled }}
+            - name: OIDC__DISABLE_OIDC
+              value: "true"
+            {{- end }}
+            {{- if .Values.oidc.enabled }}
+            - name: OIDC__CLIENT_ID
+              value: {{ required "Missing required value: oidc.client_id" .Values.oidc.client_id | quote }}
+            - name: OIDC__DISCOVERY_URL
+              value: {{ required "Missing required value: oidc.discovery_url" .Values.oidc.discovery_url | quote }}
+            - name: OIDC__JWKS_URL
+              value: {{ required "Missing required value: oidc.jwks_url" .Values.oidc.jwks_url | quote }}
+            - name: OIDC__CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   key: clientSecret

@@ -31,7 +31,7 @@ async def get_authenticated_user(
     cookie_token: Annotated[str | None, Security(api_key_cookie)],
     header_token: Annotated[str | None, Security(api_key_header)],
 ) -> AuthenticatedUser:
-    if configuration.oidc.disable_auth:
+    if configuration.oidc.disable_oidc:
         # Bypass OIDC validation — return a default user for dev/testing mode
         return AuthenticatedUser(
             uid="dev-user",

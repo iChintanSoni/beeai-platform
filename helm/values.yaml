@@ -18,10 +18,7 @@ externalRegistries: { }
 
 auth:
   enabled: true
-  client_id: "<your_client_id_here>"
-  client_secret: "<your_client_secret_here>"
-  discovery_url: "<your_oidc_discovery_endpoint_here>"
-  jwks_url: "<your_oidc_jwks_url_here>"
+  admin_password: ""
 
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
@@ -80,18 +77,20 @@ initContainers:
 
 oidc:
   enabled: true
-  discovery_url: https://preprod.login.w3.ibm.com/oauth2/.well-known/openid-configuration
-  client_id: "ZjM1MmVlZjMtOWJlZi00"
-  jwks_url: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/jwks
+  discovery_url: https://sox.verify.ibm.com/oauth2/.well-known/openid-configuration
+  client_id: "48eb31b8-fd49-438e-b23f-e62387647a9d"
+  client_secret: "MDQgBnJ05h"
+  jwks_url: https://sox.verify.ibm.com/v1.0/endpoint/default/jwks
   AUTH_TRUST_HOST: true
   NEXTAUTH_URL: https://beeai-platform.api.testing:8336
   AUTH_REDIRECT_PROXY_URL: https://beeai-platform.api.testing:8336
-  AUTH_IBM_AUTHORIZATION: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/authorize
-  AUTH_IBM_USERINFO: https://preprod.login.w3.ibm.com/v1.0/endpoint/default/userinfo
-  AUTH_IBM_ISSUER: https://preprod.login.w3.ibm.com/oidc/endpoint/default
-  AUTH_IBM_TOKEN:  https://preprod.login.w3.ibm.com/v1.0/endpoint/default/token
+  AUTH_IBM_AUTHORIZATION: https://sox.verify.ibm.com/v1.0/endpoint/default/authorize
+  AUTH_IBM_USERINFO: https://sox.verify.ibm.com/v1.0/endpoint/default/userinfo
+  AUTH_IBM_ISSUER: https://sox.verify.ibm.com/oidc/endpoint/default
+  AUTH_IBM_TOKEN:  https://sox.verify.ibm.com/v1.0/endpoint/default/token
+  AUTH_IBM_ID: 48eb31b8-fd49-438e-b23f-e62387647a9d
   # base64 encoded client secret
-  AUTH_IBM_SECRET: WlRneU5tUXdZemN0Wm1VNE15MDA=
+  AUTH_IBM_SECRET: MDQgBnJ05h
   # base64 encoded auth secret
   AUTH_SECRET: SFpjcVdsRzhTY3JOSzJhTnFhTUFDSzdtQXZMYmozQVhvNG5UYm1ESENSOD0=
 
