@@ -152,18 +152,15 @@ class ActAlwaysFirstRequirement(Requirement[RequirementAgentRunState]):
             if last_step.output is None or not isinstance(last_step.output, ActToolOutput):
                 raise ValueError("Last step output must be an instance of ActToolOutput.")
             selected_tool = last_step.output.result.selected_tool
-            if selected_tool == "final_answer":
-                return []
-            else:
-                return [
-                    Rule(
-                        target=selected_tool,
-                        forced=True,
-                        allowed=True,
-                        prevent_stop=False,
-                        hidden=False,
-                    )
-                ]
+            return [
+                Rule(
+                    target=selected_tool,
+                    forced=True,
+                    allowed=True,
+                    prevent_stop=False,
+                    hidden=False,
+                )
+            ]
 
         return [
             Rule(
@@ -187,11 +184,7 @@ def act_tool_middleware(ctx: RunContext) -> None:
         raise ValueError("ActTool is not found in the agent's tools.")
 
     def handle_start(data: RequirementAgentStartEvent, event: EventMeta) -> None:
-        allowed_tools = (
-            [t.name for t in data.request.tools if t.name != "act"]
-            if data.state.iteration == 1
-            else [t.name for t in data.request.allowed_tools if t.name != "act"]
-        )
+        allowed_tools = [t.name for t in data.request.tools if t.name != "act"]
         act_tool.allowed_tools_names = allowed_tools
 
     ctx.emitter.on("start", handle_start)
