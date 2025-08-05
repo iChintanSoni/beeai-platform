@@ -25,7 +25,7 @@ class AuthService:
     def _build_oauth(self) -> OAuth | None:
         if self._config.oidc.disable_oidc:
             return None
-        issuer = str(self._config.oidc.issuer_url)
+        issuer = str(self._config.oidc.issuer)
         oauth = OAuth()
         oauth.register(
             name="auth_provider",
