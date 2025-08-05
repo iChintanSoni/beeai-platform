@@ -7,8 +7,6 @@ import os
 import socket
 import sys
 
-from dotenv import load_dotenv
-
 from beeai_server.configuration import Configuration, get_configuration
 
 # configure logging before importing anything
@@ -19,9 +17,6 @@ configure_logging()
 from beeai_server.telemetry import configure_telemetry  # noqa: E402
 
 configure_telemetry()
-
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
