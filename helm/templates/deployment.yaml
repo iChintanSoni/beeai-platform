@@ -193,12 +193,11 @@ spec:
             {{- if not .Values.oidc.enabled }}
             - name: OIDC__DISABLE_OIDC
               value: "true"
-            {{- end }}
-            {{- if .Values.oidc.enabled }}
+            {{- else }}
             - name: OIDC__CLIENT_ID
               value: {{ required "Missing required value: oidc.client_id" .Values.oidc.client_id | quote }}
-            - name: OIDC__DISCOVERY_URL
-              value: {{ required "Missing required value: oidc.discovery_url" .Values.oidc.discovery_url | quote }}
+            - name: OIDC__ISSUER_URL
+              value: {{ required "Missing required value: oidc.issuer_url" .Values.oidc.issuer_url | quote }}
             - name: OIDC__JWKS_URL
               value: {{ required "Missing required value: oidc.jwks_url" .Values.oidc.jwks_url | quote }}
             - name: OIDC__CLIENT_SECRET

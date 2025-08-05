@@ -83,7 +83,7 @@ class AuthConfiguration(BaseModel):
 class OidcConfiguration(BaseModel):
     client_id: str | None = None
     client_secret: Secret[str] | None = Field(default=None)
-    discovery_url: AnyUrl | None = None
+    issuer_url: AnyUrl | None = None
     jwks_url: AnyUrl | None = None
     disable_oidc: bool = False
     admin_emails: list[str] = Field(default_factory=list)
@@ -93,7 +93,7 @@ class OidcConfiguration(BaseModel):
         if self.disable_oidc:
             logger.critical("Oauth Authentication is disabled! This is suitable only for local development.")
             return self
-        required = ["client_id", "client_secret", "discovery_url", "jwks_url", "admin_emails"]
+        required = ["client_id", "client_secret", "issuer_url", "jwks_url", "admin_emails"]
         for field in required:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} is required for Oauth Authentication if Oauth Auth is enabled")

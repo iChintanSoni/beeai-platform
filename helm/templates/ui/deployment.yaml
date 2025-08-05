@@ -61,27 +61,29 @@ spec:
           env:
             - name: API_URL
               value: "http://beeai-platform-svc:{{.Values.service.port}}"
-          {{- if .Values.oidc.enabled }}
-            - name:  NEXTAUTH_URL
-              value: {{ .Values.oidc.NEXTAUTH_URL }}
-            - name: AUTH_REDIRECT_PROXY_URL
-              value: {{ .Values.oidc.AUTH_REDIRECT_PROXY_URL }}
-            - name: AUTH_IBM_AUTHORIZATION
-              value: {{ .Values.oidc.AUTH_IBM_AUTHORIZATION }}
-            - name: AUTH_IBM_USERINFO
-              value: {{ .Values.oidc.AUTH_IBM_USERINFO }}
-            - name: AUTH_IBM_ISSUER
-              value:  {{ .Values.oidc.AUTH_IBM_ISSUER }}
-            - name: AUTH_IBM_TOKEN
-              value: {{ .Values.oidc.AUTH_IBM_TOKEN }}
-            - name: DISCOVERY_ENDPOINT
-              value: {{ .Values.oidc.discovery_url }}
-            - name: AUTH_IBM_ID
+            {{- if not .Values.oidc.enabled }}
+            - name: NEXT__DISABLE_OIDC
+              value: "true"
+            {{- else }}
+            - name: NEXTAUTH_URL
+              value: {{ .Values.oidc.nextauth_url }}
+            - name: NEXTAUTH_REDIRECT_PROXY_URL
+              value: {{ .Values.oidc.nextauth_redirect_proxy_url }}
+            - name: NEXTAUTH_IBM_ISSUER_URL
+              value: {{ .Values.oidc.issuer_url }}
+            - name: NEXTAUTH_IBM_CLIENT_ID
               value: {{ .Values.oidc.client_id }}
-          envFrom:
-            - secretRef:
-                name: beeai-w3id
-          {{- end }}
+            - name: NEXTAUTH_IBM_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: clientSecret
+                  name: beeai-w3id
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: authSecret
+                  name: beeai-w3id
+            {{- end }}
       volumes:
       {{- with .Values.ui.nodeSelector }}
       nodeSelector:

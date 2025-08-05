@@ -66,7 +66,7 @@ async def wait_for_api(initial_delay_seconds=5, wait: timedelta = timedelta(minu
     while datetime.now() - start_time < wait:
         await asyncio.sleep(1)
         with contextlib.suppress(httpx.HTTPError, ConnectionError):
-            await api_request("get", "providers")
+            await api_request("get", "providers", use_auth=False)
             return True
     raise ConnectionError(f"Server did not start in {wait}. Please check your internet connection.")
 

@@ -33,14 +33,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       id: 'IBM',
       name: 'IBM',
       type: 'oidc',
-      issuer: process.env.AUTH_IBM_ISSUER,
-      authorization: process.env.AUTH_IBM_AUTHORIZATION,
-      clientId: process.env.IBM_CLIENT_ID,
-      clientSecret: process.env.IBM_CLIENT_SECRET,
-      wellKnown: process.env.DISCOVERY_ENDPOINT,
-      redirectProxyUrl: process.env.AUTH_REDIRECT_PROXY_URL,
-      userinfo: process.env.AUTH_IBM_USERINFO,
-      token: process.env.AUTH_IBM_TOKEN,
+      issuer: process.env.NEXTAUTH_IBM_ISSUER_URL,
+      clientId: process.env.NEXTAUTH_IBM_CLIENT_ID,
+      clientSecret: process.env.NEXTAUTH_IBM_CLIENT_SECRET,
+      redirectProxyUrl: process.env.NEXTAUTH_REDIRECT_PROXY_URL,
       account(account) {
         const refresh_token_expires_at = Math.floor(Date.now() / 1000) + Number(account.refresh_token_expires_in);
         return {
