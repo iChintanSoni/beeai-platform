@@ -112,10 +112,9 @@ export interface IbmProfile extends Record<string, any> {
 }
 
 export default function IBM(config: OIDCConfig<IbmProfile>): OIDCConfig<IbmProfile> {
-  console.log(`config.wellKnown=${config.wellKnown}`);
   return {
-    id: 'IBM',
-    name: 'IBM',
+    id: config.id,
+    name: config.name,
     type: 'oidc',
     idToken: true,
     style: { text: '#ffffff', bg: '#252525' },
