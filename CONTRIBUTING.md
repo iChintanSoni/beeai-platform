@@ -75,42 +75,35 @@ deactivate
 ```
 
 ### Enabling or disabling auth flows for beeai_cli
-- update beeai-cli/src/beeai_cli/configuration.py and toggle the value of auth_disabled as needed
-```Python
-auth_disabled: bool = False
-```
-When auth_disabled is `False`:
 
+- Copy the apps/beeai-cli/.env.template as .env
+- To turn on oauth on platform startup set `BEEAI__OIDC_ENABLED=True` in the .env file.
 - Add an entry to /etc/hosts on your local system:
 ```
 # Added by BEEAI-PLATFORM
 127.0.0.1        beeai-platform.api.testing
 ```
 
-Update OAuth credentials in helm/values.yaml under:
+- Update OAuth credentials in helm/values.yaml under:
 
 ```YAML
 oidc:
   enabled: true
   discovery_url: <your_oidc_discovery_endpoint_here>
   client_id: <your_client_id_here>
+  client_secret: <your_oidc_client_secret>
+  issuer: <your_issuer>
   jwks_url: <your_jwks_endpoint_here>
-  AUTH_TRUST_HOST: true
-  NEXTAUTH_URL: https://beeai-platform.api.testing:8336
-  AUTH_REDIRECT_PROXY_URL: https://beeai-platform.api.testing:8336
-  AUTH_IBM_AUTHORIZATION: <your_authorization_endpoint_here>
-  AUTH_IBM_USERINFO: <your_userinfo_endpoint>
-  AUTH_IBM_ISSUER: <your_issuer>
-  AUTH_IBM_TOKEN:  <your_token_endpoint>
-  # base64 encoded client secret
-  AUTH_IBM_SECRET: <your_base64_encoded_client_secret>
-  # base64 encoded auth secret
-  AUTH_SECRET: <your_next_auth_secret>
+  nextauth_trust_host: true
+  nextauth_url: "https://beeai-platform.api.testing:8336"
+  nextauth_redirect_proxy_url: "https://beeai-platform.api.testing:8336"
+  nextauth_secret: "<To generate a random string, you can use the Auth.js CLI: npx auth secret>
 ```
 
 This branch enables istio by default, and creates a gateway & routes for `https://beeai-platform.api.testing:8336/` .  The intent being that tokens returned by OAuth routes are receieved in the browser over HTTPS rather than plain text HTTP to prevent unauthorized use of tokens.
 
 The default namespace is labeled istio.io/dataplane-mode=ambient so all intra pod trafic is via ztunnel with the exception of the beeai-platform pod due to it's use of the hostNetwork (istio can not bring a hostNetwork enabled pod into the mesh).
+
 
 
 ### Running and debugging individual components

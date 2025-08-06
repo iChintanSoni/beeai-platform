@@ -80,7 +80,7 @@ async def api_request(
     use_auth: bool = True,
 ) -> dict | None:
     headers = {}
-    if not config.auth_disabled and use_auth:
+    if config.oidc_enabled and use_auth:
         headers["Authorization"] = await set_auth_header()
 
     """Make an API request to the server."""
@@ -116,7 +116,7 @@ async def api_stream(
     use_auth: bool = True,
 ) -> AsyncIterator[dict[str, Any]]:
     headers = {}
-    if not config.auth_disabled and use_auth:
+    if config.oidc_enabled and use_auth:
         headers["Authorization"] = await set_auth_header()
 
     """Make a streaming API request to the server."""
@@ -149,7 +149,7 @@ async def api_stream(
 @asynccontextmanager
 async def a2a_client(agent_card: AgentCard, use_auth: bool = True) -> AsyncIterator[A2AClient]:
     headers = {}
-    if not config.auth_disabled and use_auth:
+    if config.oidc_enabled and use_auth:
         headers["Authorization"] = await set_auth_header()
     async with httpx.AsyncClient(headers=headers) as httpx_client:
         yield A2AClient(httpx_client=httpx_client, agent_card=agent_card)

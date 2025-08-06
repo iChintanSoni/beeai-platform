@@ -485,7 +485,7 @@ async def start(
         )
 
         # When authentication is enabled setup a gateway and istio in ambient mode
-        if not Configuration().auth_disabled:
+        if Configuration().oidc_enabled:
             # install istioctl
             await run_command(
                 {
@@ -620,7 +620,7 @@ async def start(
                                 "encryptionKey": "Ovx8qImylfooq4-HNwOzKKDcXLZCB3c_m0JlB9eJBxc=",  # Dummy key for local use
                                 "features": {"uiNavigation": True, "selfRegistration": True},
                                 "auth": {"enabled": False},
-                                "oidc": {"enabled": False},
+                                "oidc": {"enabled": Configuration().oidc_enabled},
                             }
                         ),
                         "set": dict(value.split("=", 1) for value in set_values_list),
