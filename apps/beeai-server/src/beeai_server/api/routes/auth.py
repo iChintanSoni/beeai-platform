@@ -12,29 +12,32 @@ SLASH_LOGIN = "/login"
 
 router = APIRouter()
 
-pending_states: dict[str, dict] = {}
 pending_tokens: dict[str, dict] = {}
 
 
-@router.post("/login")
+@router.get("/login")
 async def login(
     auth_service: AuthServiceDependency,
     request: Request,
-    cli: bool = Query(default=False, description="Set to true if the login request is from a CLI tool"),
+    callback_url: str = Query(
+        ..., description="The URL to which the actor will be redirected after completing the login process."
+    ),
 ):
-    return await auth_service.login(request=request, cli=cli, pending_states=pending_states)
+    if not (callback_url.startswith("http://") or callback_url.startswith("https://")):
+        callback_url = "https://" + callback_url  # Default to HTTPS; adjust as needed
+    return await auth_service.login(request=request, callback_url=callback_url)
 
 
 @router.get("/auth/callback")
 async def auth_callback(request: Request, configuration: ConfigurationDependency, auth_service: AuthServiceDependency):
-    return await auth_service.handle_callback(request, pending_states, pending_tokens)
+    return await auth_service.handle_callback(request, pending_tokens)
 
 
-@router.get("/cli-complete")
-async def cli_complete(auth_service: AuthServiceDependency):
-    return await auth_service.render_cli_complete_page()
+@router.get("/display-passcode")
+async def display_passcode(auth_service: AuthServiceDependency, passcode: str = Query(None)):
+    return await auth_service.render_display_passcode_page(passcode)
 
 
-@router.get("/cli/token")
-async def get_token(login_id: str, auth_service: AuthServiceDependency):
-    return await auth_service.get_token_by_login_id(login_id, pending_tokens)
+@router.get("/token")
+async def get_token(auth_service: AuthServiceDependency, passcode: str = Query(None)):
+    return await auth_service.get_token_by_passcode(passcode, pending_tokens)

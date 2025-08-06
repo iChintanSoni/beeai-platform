@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-import uuid
+import secrets
+import string
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import HTTPException, Request
@@ -37,40 +38,33 @@ class AuthService:
         )
         return oauth
 
-    async def login(
-        self, request: Request, cli: bool, pending_states: dict[str, dict]
-    ) -> JSONResponse | RedirectResponse:
+    async def login(self, request: Request, callback_url: str) -> JSONResponse | RedirectResponse:
         if self._oauth is None:
-            return {"login_url": None, "login_id": "dev", "dev_token": "beeai-dev-token"}
+            return {"login_url": None, "passcode": "dev", "token": "beeai-dev-token"}
 
-        login_id = str(uuid.uuid4())
         redirect_uri = str(request.url_for("auth_callback"))
 
-        # CLI logic to handle login
-        if cli:
-            response = await self._oauth.auth_provider.authorize_redirect(request, redirect_uri, state=login_id)
-            state_key = f"_state_auth_provider_{login_id}"
-            auth_state_dict = request.session.get(state_key)
-            pending_states[login_id] = {"login_id": login_id, "auth_state": auth_state_dict}
-            return JSONResponse({"login_url": response.headers.get("location"), "login_id": login_id})
-        # UI logic to handle login
-        request.session["is_cli"] = False
-        request.session["login_id"] = login_id
-        return await self._oauth.auth_provider.authorize_redirect(request, redirect_uri)
+        request.session["callback_url"] = callback_url
+        request.session["redirect_uri"] = redirect_uri
 
-    async def handle_callback(self, request: Request, pending_states: dict[str, dict], pending_tokens: dict[str, dict]):
+        response = await self._oauth.auth_provider.authorize_redirect(request, redirect_uri)
+
+        # Redirect the user to the authorization URL of the IDP
+        idp_authorization_url = response.headers.get("location")
+        logger.info(f"Redirecting to IDP login page: {idp_authorization_url}")
+
+        return RedirectResponse(idp_authorization_url)
+
+    async def handle_callback(self, request: Request, pending_tokens: dict[str, dict]):
         if self._oauth is None:
             raise HTTPException(status_code=503, detail="OIDC disabled in configuration")
 
-        state = request.query_params.get("state")
-        login_id = None
+        callback_url = request.session.get("callback_url")
+        if not callback_url:
+            logger.error("Callback URL is NULL.")
+            return RedirectResponse(SLASH_LOGIN)
 
-        if state and state in pending_states:
-            stored_state = pending_states.pop(state)
-            login_id = stored_state["login_id"]
-            state_key = f"_state_auth_provider_{login_id}"
-            request.session[state_key] = stored_state["auth_state"]
-            is_cli = True
+        passcode = "".join(secrets.choice(string.ascii_letters) for _ in range(10))
 
         try:
             token = await self._oauth.auth_provider.authorize_access_token(request)
@@ -78,36 +72,68 @@ class AuthService:
             logger.debug("Error running authorize_access_token %s", str(e))
             return RedirectResponse(SLASH_LOGIN)
 
-        if login_id and token:
-            pending_tokens[login_id] = token
+        if passcode and token:
+            pending_tokens[passcode] = token
 
-        response = RedirectResponse("/api/v1/cli-complete" if is_cli else "/")
-        if is_cli:
-            response.set_cookie("token", token, secure=True, samesite="strict")
-        else:
-            response.set_cookie("beeai-platform", token, httponly=True, secure=True, samesite="strict")
-        return response
+        delimiter = "&" if "?" in callback_url else "?"
+        callback_url += f"{delimiter}passcode={passcode}"
 
-    async def render_cli_complete_page(self) -> HTMLResponse:
-        return HTMLResponse("""
-            <html><body>
-            <h3>Login Successful</h3>
-            <script>
-                const token = document.cookie.split('; ').find(row => row.startsWith('token=')).split('=')[1];
-                fetch('/api/v1/auth/poll', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token })
-                });
-            </script>
-            You can close this window.
-            </body></html>
+        return RedirectResponse(callback_url)
+
+    async def render_display_passcode_page(self, passcode: str) -> HTMLResponse:
+        display_passcode = passcode or "Not Available"
+        return HTMLResponse(f"""
+        <html>
+            <head>
+                <title>One-Time Passcode</title>
+                <style>
+                    body {{
+                        font-family: sans-serif;
+                        padding: 2rem;
+                    }}
+                    .passcode-container {{
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    }}
+                    .copy-icon {{
+                        cursor: pointer;
+                        font-size: 1.2rem;
+                        padding: 0.3rem 0.6rem;
+                        border: 1px solid #ccc;
+                        border-radius: 4px;
+                        background-color: #f5f5f5;
+                        transition: background-color 0.2s ease;
+                    }}
+                    .copy-icon:hover {{
+                        background-color: #e0e0e0;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h3>You are logging in with W3ID</h3>
+                <div class="passcode-container">
+                    <strong>Your one-time passcode is:</strong>
+                    <span id="passcode">{display_passcode}</span>
+                    <span class="copy-icon" onclick="copyPasscode()">📋</span>
+                </div>
+
+                <script>
+                    function copyPasscode() {{
+                        const passcodeText = document.getElementById('passcode').innerText;
+                        navigator.clipboard.writeText(passcodeText).catch(function(err) {{
+                            console.log("Failed to copy passcode:", err);
+                        }});
+                    }}
+                </script>
+            </body>
+        </html>
         """)
 
-    async def get_token_by_login_id(self, login_id: str, pending_tokens: dict) -> JSONResponse:
-        if login_id == "dev":
+    async def get_token_by_passcode(self, passcode: str, pending_tokens: dict) -> JSONResponse:
+        if passcode == "dev":
             return JSONResponse(status_code=200, content={"token": "beeai-dev-token"})
-        token = pending_tokens.pop(login_id, None)
+        token = pending_tokens.pop(passcode, None)
         if token:
             return JSONResponse(status_code=200, content={"token": token})
         raise HTTPException(status_code=404, detail="Token not found or expired")
