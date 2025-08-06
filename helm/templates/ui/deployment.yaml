@@ -69,8 +69,8 @@ spec:
               value: {{ .Values.oidc.nextauth_url }}
             - name: NEXTAUTH_REDIRECT_PROXY_URL
               value: {{ .Values.oidc.nextauth_redirect_proxy_url }}
-            - name: NEXTAUTH_IBM_ISSUER_URL
-              value: {{ .Values.oidc.issuer_url }}
+            - name: NEXTAUTH_IBM_ISSUER
+              value: {{ .Values.oidc.issuer }}
             - name: NEXTAUTH_IBM_CLIENT_ID
               value: {{ .Values.oidc.client_id }}
             - name: NEXTAUTH_IBM_CLIENT_SECRET
