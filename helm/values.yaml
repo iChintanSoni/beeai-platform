@@ -79,7 +79,7 @@ oidc:
   enabled: true
   client_id: <your_idp_client_id>
   client_secret: <your_idp_client_secret>
-  issuer_url: <your_idp_issuer_url>
+  issuer: <your_idp_issuer>
   jwks_url: <your_idp_jwks_url>
   nextauth_trust_host: true
   nextauth_url: https://beeai-platform.api.testing:8336

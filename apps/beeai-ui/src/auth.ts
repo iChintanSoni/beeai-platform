@@ -44,7 +44,7 @@ const providers: Provider[] = [
     id: 'w3id',
     name: 'w3id',
     type: 'oidc',
-    issuer: process.env.NEXTAUTH_IBM_ISSUER_URL,
+    issuer: process.env.NEXTAUTH_IBM_ISSUER,
     clientId: process.env.NEXTAUTH_IBM_CLIENT_ID,
     clientSecret: process.env.NEXTAUTH_IBM_CLIENT_SECRET,
     redirectProxyUrl: process.env.NEXTAUTH_REDIRECT_PROXY_URL,
