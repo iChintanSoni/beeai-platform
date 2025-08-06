@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function LandingPage() {
   let firstAgentName;
   const session = await auth();
-  const isOidcDisabled = process.env.NEXT_DISABLE_OIDC === 'true';
+  const isOidcDisabled = process.env.NEXT__DISABLE_OIDC === 'true';
   if (!session?.user) {
     await connection();
     // only force login if oidc is enabled.
