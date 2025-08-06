@@ -16,6 +16,7 @@ import classes from './signin.module.scss';
 
 const SIGNIN_ERROR_URL = '/error';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function SignInPage(props) {
   return (
     <div className={classes.bannerBackground}>
