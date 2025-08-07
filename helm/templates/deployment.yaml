@@ -191,6 +191,10 @@ spec:
               value: "true"
           {{- end }}
           {{- if .Values.oidc.enabled }}
+          {{- if .Values.oidc.admin_emails }}
+            - name: OIDC__ADMIN_EMAILS
+              value: {{ .Values.oidc.admin_emails | quote }}
+          {{- end }}
             - name: OIDC__CLIENT_ID
               value: {{ required "Missing required value: oidc.client_id" .Values.oidc.client_id | quote }}
             - name: OIDC__ISSUER
