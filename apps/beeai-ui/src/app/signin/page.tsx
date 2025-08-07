@@ -3,21 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// import { Bee } from "@carbon/icons-react";
-// import { Button } from "@carbon/react";
 import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
 
 import { providerMap, signIn } from '#auth.ts';
 import Bee from '#svgs/bee.svg';
 
-// import BannerImage from '#svgs/BeeAI-Banner.svg';
 import classes from './signin.module.scss';
 
 const SIGNIN_ERROR_URL = '/error';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function SignInPage(props) {
+export interface SigninPageProps {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function SignInPage(props: SigninPageProps) {
+  const searchParams = await props.searchParams;
   return (
     <div className={classes.bannerBackground}>
       {/* <BannerImage /> */}
@@ -45,11 +46,15 @@ export default async function SignInPage(props) {
               key={provider.id}
               action={async () => {
                 'use server';
-
                 try {
-                  await signIn(provider.id, {
-                    redirectTo: props.searchParams?.callbackUrl ?? '',
-                  });
+                  const callbackUrl = searchParams?.['callbackUrl'] ?? '';
+                  if (typeof callbackUrl == 'string') {
+                    await signIn(provider.id, {
+                      redirectTo: callbackUrl,
+                    });
+                  } else {
+                    throw new URIError('missing or invalid redirect uri passed to signIn.');
+                  }
                 } catch (error) {
                   // Signin can fail for a number of reasons, such as the user
                   // not existing, or the user not having the correct role.
