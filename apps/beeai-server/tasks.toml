@@ -282,6 +282,8 @@ VM_NAME=itegration-test-run
     --set ui.enabled=false
 
 eval "$( {{ mise_bin }} run beeai-platform:shell --vm-name="$VM_NAME" )"
+export BEEAI__OIDC_ENABLED=False
+export OIDC__DISABLE_OIDC=True
 
 {{ mise_bin }} run beeai-server:dev:connect --vm-name="$VM_NAME"
 
