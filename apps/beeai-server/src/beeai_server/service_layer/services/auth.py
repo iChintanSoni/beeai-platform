@@ -86,6 +86,8 @@ class AuthService:
 
     async def render_display_passcode_page(self, passcode: str) -> HTMLResponse:
         display_passcode = passcode or "Not Available"
+        expiry_seconds = self._config.oidc.passcode_ttl_seconds  # 5 minutes
+
         return HTMLResponse(f"""
         <html>
             <head>
@@ -112,19 +114,58 @@ class AuthService:
                     .copy-icon:hover {{
                         background-color: #e0e0e0;
                     }}
+                    .expired {{
+                        color: red;
+                        font-weight: bold;
+                    }}
                 </style>
             </head>
             <body>
                 <h3>You are logging in with W3ID</h3>
-                <div class="passcode-container">
+                <div class="passcode-container" id="passcode-section">
                     <strong>Your one-time passcode is:</strong>
                     <span id="passcode">{display_passcode}</span>
-                    <span class="copy-icon" onclick="copyPasscode()">📋</span>
+                    <span class="copy-icon" onclick="copyPasscode()" id="copy-btn">📋</span>
+                    <span id="timer"></span>
+                </div>
+                <div id="expiry-message" class="expired" style="display:none;">
+                    Expired
                 </div>
 
                 <script>
+                    const expirySeconds = {expiry_seconds};
+                    let remaining = expirySeconds;
+
+                    const timerEl = document.getElementById('timer');
+                    const passcodeEl = document.getElementById('passcode');
+                    const expiryMessageEl = document.getElementById('expiry-message');
+                    const copyBtnEl = document.getElementById('copy-btn');
+
+                    function formatTime(seconds) {{
+                        const minutes = Math.floor(seconds / 60);
+                        const secs = seconds % 60;
+                        return `${{minutes}}:${{secs.toString().padStart(2, '0')}}`;
+                    }}
+
+                    function updateTimer() {{
+                        if (remaining > 0) {{
+                            timerEl.textContent = "(" + formatTime(remaining) + " remaining)";
+                            remaining--;
+                        }} else {{
+                            clearInterval(timerInterval);
+                            passcodeEl.textContent = '';
+                            copyBtnEl.style.display = 'none';
+                            timerEl.style.display = 'none';
+                            expiryMessageEl.style.display = 'block';
+                        }}
+                    }}
+
+                    const timerInterval = setInterval(updateTimer, 1000);
+                    updateTimer();
+
                     function copyPasscode() {{
-                        const passcodeText = document.getElementById('passcode').innerText;
+                        const passcodeText = passcodeEl.innerText;
+                        if (!passcodeText) return;
                         navigator.clipboard.writeText(passcodeText).catch(function(err) {{
                             console.log("Failed to copy passcode:", err);
                         }});

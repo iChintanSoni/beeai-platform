@@ -14,8 +14,6 @@ from beeai_server.domain.repositories.token import ITokenPasscodeRepository
 from beeai_server.exceptions import EntityNotFoundError
 from beeai_server.infrastructure.persistence.repositories.db_metadata import metadata
 
-TOKEN_TTL_SECONDS = 3 * 60  # 3 minutes
-
 token_table = Table(
     "token",
     metadata,
@@ -33,6 +31,7 @@ class SqlAlchemyTokenPasscodeRepository(ITokenPasscodeRepository):
             raise RuntimeError("Missing encryption key in configuration.")
 
         self.fernet = Fernet(configuration.persistence.encryption_key.get_secret_value())
+        self.ttl_seconds = configuration.oidc.passcode_ttl_seconds
 
     async def set(self, passcode: str, token: dict) -> None:
         token_str = json.dumps(token)
@@ -52,13 +51,11 @@ class SqlAlchemyTokenPasscodeRepository(ITokenPasscodeRepository):
 
     async def get(self, passcode: str, default: str | None = None) -> dict:
         now = datetime.now(UTC)
-        print("NOW:", now)
-        print("TTL Threshold:", now - timedelta(seconds=TOKEN_TTL_SECONDS))
 
         query = (
             select(token_table)
             .where(token_table.c.passcode == passcode)
-            .where(token_table.c.created_at >= now - timedelta(seconds=TOKEN_TTL_SECONDS))
+            .where(token_table.c.created_at >= now - timedelta(seconds=self.ttl_seconds))
         )
         result = await self.connection.execute(query)
         row = result.fetchone()
@@ -73,6 +70,6 @@ class SqlAlchemyTokenPasscodeRepository(ITokenPasscodeRepository):
         await self.connection.execute(delete(token_table).where(token_table.c.passcode == passcode))
 
     async def delete_expired(self) -> None:
-        expiry_cutoff = datetime.now(UTC) - timedelta(seconds=TOKEN_TTL_SECONDS)
+        expiry_cutoff = datetime.now(UTC) - timedelta(seconds=self.ttl_seconds)
         result = await self.connection.execute(delete(token_table).where(token_table.c.created_at < expiry_cutoff))
         return result.rowcount

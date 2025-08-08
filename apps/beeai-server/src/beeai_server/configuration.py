@@ -81,6 +81,7 @@ class AuthConfiguration(BaseModel):
 
 
 class OidcConfiguration(BaseModel):
+    passcode_ttl_seconds: int = 3 * 60  # 3 minutes
     client_id: str | None = None
     client_secret: Secret[str] | None = Field(default=None)
     issuer: AnyUrl | None = None
