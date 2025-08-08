@@ -126,8 +126,8 @@ class AuthService:
                     <strong>Your one-time passcode is:</strong>
                     <span id="passcode">{display_passcode}</span>
                     <span class="copy-icon" onclick="copyPasscode()" id="copy-btn">📋</span>
-                    <span id="timer"></span>
                 </div>
+                <div id="timer" style="margin-top: 0.5rem;"></div>
                 <div id="expiry-message" class="expired" style="display:none;">
                     Expired
                 </div>
@@ -149,7 +149,7 @@ class AuthService:
 
                     function updateTimer() {{
                         if (remaining > 0) {{
-                            timerEl.textContent = "(" + formatTime(remaining) + " remaining)";
+                            timerEl.textContent = "It will expire in " + formatTime(remaining) + " minutes.";
                             remaining--;
                         }} else {{
                             clearInterval(timerInterval);
