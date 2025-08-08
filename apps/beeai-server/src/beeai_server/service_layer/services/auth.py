@@ -42,7 +42,7 @@ class AuthService:
 
     async def login(self, request: Request, callback_url: str) -> JSONResponse | RedirectResponse:
         if self._oauth is None:
-            return {"login_url": None, "passcode": "dev", "token": "beeai-dev-token"}
+            return JSONResponse({"login_url": None, "passcode": "dev", "token": "beeai-dev-token"})
 
         redirect_uri = str(request.url_for("auth_callback"))
 
