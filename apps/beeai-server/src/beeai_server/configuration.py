@@ -93,7 +93,7 @@ class OidcConfiguration(BaseModel):
         if self.disable_oidc:
             logger.critical("Oauth Authentication is disabled! This is suitable only for local development.")
             return self
-        required = ["client_id", "client_secret", "issuer", "jwks_url", "admin_emails"]
+        required = ["client_id", "client_secret", "issuer", "jwks_url"]
         for field in required:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} is required for Oauth Authentication if Oauth Auth is enabled")

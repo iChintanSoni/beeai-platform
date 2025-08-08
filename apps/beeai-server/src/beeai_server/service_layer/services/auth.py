@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from kink import inject
 
 from beeai_server.configuration import Configuration
+from beeai_server.service_layer.unit_of_work import IUnitOfWorkFactory
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,8 @@ SLASH_LOGIN = "/login"
 
 @inject
 class AuthService:
-    def __init__(self, configuration: Configuration):
+    def __init__(self, uow: IUnitOfWorkFactory, configuration: Configuration):
+        self._uow = uow
         self._config = configuration
         self._oauth = self._build_oauth()
 
@@ -73,7 +75,9 @@ class AuthService:
             return RedirectResponse(SLASH_LOGIN)
 
         if passcode and token:
-            pending_tokens[passcode] = token
+            async with self._uow() as uow:
+                await uow.tokens.set(passcode, token)
+                await uow.commit()
 
         delimiter = "&" if "?" in callback_url else "?"
         callback_url += f"{delimiter}passcode={passcode}"
@@ -133,7 +137,8 @@ class AuthService:
     async def get_token_by_passcode(self, passcode: str, pending_tokens: dict) -> JSONResponse:
         if passcode == "dev":
             return JSONResponse(status_code=200, content={"token": "beeai-dev-token"})
-        token = pending_tokens.pop(passcode, None)
+        async with self._uow() as uow:
+            token = await uow.tokens.get(passcode)
         if token:
             return JSONResponse(status_code=200, content={"token": token})
         raise HTTPException(status_code=404, detail="Token not found or expired")
