@@ -14,15 +14,12 @@ from acp_sdk.models import (
     RunResumeRequest,
     RunResumeResponse,
 )
-from fastapi.security import APIKeyCookie, APIKeyHeader
 
 from beeai_server.api.dependencies import AcpProxyServiceDependency
 from beeai_server.api.schema.acp import AgentReadResponse, AgentsListResponse
 from beeai_server.auth.dependencies import AuthenticatedUserDependency
 from beeai_server.service_layer.services.acp import AcpServerResponse
 
-api_key_cookie = APIKeyCookie(name="beeai-platform", auto_error=False)
-api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 router = fastapi.APIRouter()
 
 

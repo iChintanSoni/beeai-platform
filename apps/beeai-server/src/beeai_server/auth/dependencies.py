@@ -3,42 +3,32 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyCookie, APIKeyHeader
 from kink import di
 
 from beeai_server.auth.utils import decode_jwt_token, extract_token
 from beeai_server.configuration import Configuration
-
-from .models import AuthenticatedUser
+from beeai_server.domain.models.user import User, UserRole
+from beeai_server.exceptions import EntityNotFoundError
+from beeai_server.service_layer.services.users import UserService
 
 ConfigurationDependency = Annotated[Configuration, Depends(lambda: di[Configuration])]
+UserServiceDependency = Annotated[UserService, Depends(lambda: di[UserService])]
 
 api_key_cookie = APIKeyCookie(name="beeai-platform", auto_error=False)
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
-# api_key_header = HTTPBearer(auto_error=False)
-
-
-async def get_current_user(request: Request) -> AuthenticatedUser:
-    user = request.user
-    if not user or not user.is_authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return user
 
 
 async def get_authenticated_user(
+    user_service: UserServiceDependency,
     configuration: ConfigurationDependency,
     cookie_token: Annotated[str | None, Security(api_key_cookie)],
     header_token: Annotated[str | None, Security(api_key_header)],
-) -> AuthenticatedUser:
+) -> User:
     if configuration.oidc.disable_oidc:
         # Bypass OIDC validation — return a default user for dev/testing mode
-        return AuthenticatedUser(
-            uid="dev-user",
-            is_admin=True,
-            display_name="dev user",
-            email="user@beeai.dev",
-        )
+        return await user_service.get_user_by_email("admin@beeai.dev")
     try:
         token = extract_token(header_token, cookie_token)
     except Exception as e:
@@ -56,19 +46,20 @@ async def get_authenticated_user(
     email = claims.get("email")
     is_admin = email in configuration.oidc.admin_emails
 
-    return AuthenticatedUser(
-        uid=claims.get("sub"),
-        is_admin=is_admin,
-        display_name=claims.get("displayName"),
-        email=claims.get("email"),
-    )
+    try:
+        authenticated_user = await user_service.get_user_by_email(email=email)
+    except EntityNotFoundError:
+        role = UserRole.admin if is_admin else UserRole.user
+        authenticated_user = await user_service.create_user(email=email, role=role)
+
+    return authenticated_user
 
 
-def check_admin(user: Annotated[AuthenticatedUser, Depends(get_authenticated_user)]) -> AuthenticatedUser:
-    if not user.is_admin:
+def check_admin(user: Annotated[User, Depends(get_authenticated_user)]) -> User:
+    if user.role != UserRole.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
     return user
 
 
-AuthenticatedUserDependency = Annotated[AuthenticatedUser, Depends(get_authenticated_user)]
+AuthenticatedUserDependency = Annotated[User, Depends(get_authenticated_user)]
 AdminUserDependency = Annotated[str, Depends(check_admin)]
