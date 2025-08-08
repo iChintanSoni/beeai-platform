@@ -11,6 +11,7 @@ from beeai_server.api.routes import auth
 from beeai_server.configuration import Configuration
 from beeai_server.service_layer.services.auth import AuthService
 
+
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_display_passcode():
