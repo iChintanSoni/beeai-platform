@@ -36,6 +36,7 @@ export function CopyButton({ contentRef, kind = 'ghost', size = 'md', wrapperCla
   return (
     <IconButton
       label="Copy"
+      align="bottom"
       kind={kind}
       size={size}
       onClick={handleClick}
