@@ -8,6 +8,7 @@ requires-python = ">=3.13,<4.0"
 dependencies = [
     "anyio~=4.9.0",
     "pydantic~=2.11.7",
+    "beeai-sdk",
     "pydantic-settings~=2.10.1",
     "requests~=2.32.4",
     "jsonschema~=4.24.0",
@@ -40,6 +41,9 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 source-include = ["src/beeai_cli/data"]
+
+[tool.uv.sources]
+beeai-sdk = { path = "../beeai-sdk", package = false }
 
 [tool.ruff]
 line-length = 120
