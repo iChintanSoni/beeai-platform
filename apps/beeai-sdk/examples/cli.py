@@ -80,8 +80,8 @@ async def cli(base_url: str, context_id: str) -> None:
                         beeai_sdk.a2a.extensions.MCPServiceExtensionClient(mcp_spec).fulfillment_metadata(
                             mcp_fulfillments={
                                 # Demonstration only: we ignore the asks and just configure BeeAI proxy for everything
-                                key: beeai_sdk.a2a.extensions.services.mcp.MCPFulfillment(
-                                    transport=beeai_sdk.a2a.extensions.services.mcp.StreamableHTTPTransport(
+                                key: beeai_sdk.a2a.extensions.services.mcp_service.MCPFulfillment(
+                                    transport=beeai_sdk.a2a.extensions.services.mcp_service.StreamableHTTPTransport(
                                         url="http://localhost:8333/mcp",
                                     ),
                                 )

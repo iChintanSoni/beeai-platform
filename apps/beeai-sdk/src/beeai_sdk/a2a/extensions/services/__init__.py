@@ -3,4 +3,4 @@
 
 from .embedding import *
 from .llm import *
-from .mcp import *
+from .mcp_service import *

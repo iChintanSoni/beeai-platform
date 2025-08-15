@@ -7,7 +7,7 @@ from typing import Annotated
 from a2a.types import Message
 from mcp import ClientSession
 
-from beeai_sdk.a2a.extensions.services.mcp import MCPServiceExtensionServer, MCPServiceExtensionSpec
+from beeai_sdk.a2a.extensions.services.mcp_service import MCPServiceExtensionServer, MCPServiceExtensionSpec
 from beeai_sdk.a2a.types import RunYield
 from beeai_sdk.server import Server
 from beeai_sdk.server.context import RunContext
