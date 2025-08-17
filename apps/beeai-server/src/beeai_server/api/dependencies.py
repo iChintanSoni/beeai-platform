@@ -16,6 +16,7 @@ from beeai_server.configuration import Configuration
 from beeai_server.domain.models.permissions import AuthorizedUser, Permissions
 from beeai_server.domain.models.user import User, UserRole
 from beeai_server.service_layer.services.a2a import A2AProxyService
+from beeai_server.service_layer.services.auth import AuthService
 from beeai_server.service_layer.services.contexts import ContextService
 from beeai_server.service_layer.services.env import EnvService
 from beeai_server.service_layer.services.files import FileService
@@ -35,6 +36,7 @@ FileServiceDependency = Annotated[FileService, Depends(lambda: di[FileService])]
 UserServiceDependency = Annotated[UserService, Depends(lambda: di[UserService])]
 VectorStoreServiceDependency = Annotated[VectorStoreService, Depends(lambda: di[VectorStoreService])]
 UserFeedbackServiceDependency = Annotated[UserFeedbackService, Depends(lambda: di[UserFeedbackService])]
+AuthServiceDependency = Annotated[AuthService, Depends(lambda: di[AuthService])]
 
 logger = logging.getLogger(__name__)
 

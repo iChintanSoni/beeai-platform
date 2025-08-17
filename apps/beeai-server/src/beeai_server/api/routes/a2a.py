@@ -15,6 +15,7 @@ from beeai_server.api.dependencies import (
     ProviderServiceDependency,
     RequiresPermissions,
 )
+from beeai_server.auth.dependencies import AuthenticatedUserDependency
 from beeai_server.domain.models.permissions import AuthorizedUser
 from beeai_server.service_layer.services.a2a import A2AServerResponse
 
@@ -35,6 +36,7 @@ async def get_agent_card(
     request: Request,
     provider_service: ProviderServiceDependency,
     _: Annotated[AuthorizedUser, Depends(RequiresPermissions(providers={"read"}))],
+    user: AuthenticatedUserDependency,
 ) -> AgentCard:
     provider = await provider_service.get_provider(provider_id=provider_id)
     url = str(request.url_for(proxy_request.__name__, provider_id=provider.id, path=""))
@@ -48,6 +50,7 @@ async def proxy_request(
     request: fastapi.requests.Request,
     a2a_proxy: A2AProxyServiceDependency,
     _: Annotated[AuthorizedUser, Depends(RequiresPermissions(a2a_proxy={"*"}))],
+    user: AuthenticatedUserDependency,
     path: str = "",
 ):
     client = await a2a_proxy.get_proxy_client(provider_id=provider_id)
