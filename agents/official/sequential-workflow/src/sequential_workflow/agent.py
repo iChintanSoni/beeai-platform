@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import uuid
 from textwrap import dedent
 from typing import Any, AsyncIterator
-import uuid
 
+import httpx
+import yaml
 from a2a.client import ClientConfig, ClientFactory
 from a2a.types import (
     AgentCard,
@@ -13,22 +15,19 @@ from a2a.types import (
     Artifact,
     DataPart,
     Message,
+    Part,
     Role,
+    Task,
     TaskArtifactUpdateEvent,
+    TaskState,
+    TaskStatus,
     TaskStatusUpdateEvent,
     TextPart,
-    Part,
-    TaskStatus,
-    TaskState,
-    Task,
 )
-import yaml
-from pydantic import Field, BaseModel
-
-import httpx
 from beeai_sdk.a2a.extensions import AgentDetail
 from beeai_sdk.platform import Metadata
 from beeai_sdk.server import Server
+from pydantic import BaseModel, Field
 
 
 class WorkflowStep(BaseModel):
