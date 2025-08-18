@@ -5,21 +5,21 @@ import json
 import os
 from pathlib import Path
 
-import aiofiles
+import anyio
 
 TOKEN_FILE = Path.home() / ".beeai" / "token.json"
 
 
 async def save_token(token: str):
     TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    async with aiofiles.open(TOKEN_FILE, "w") as f:
+    async with await anyio.open_file(TOKEN_FILE, "w") as f:
         await f.write(json.dumps({"token": token}))
     os.chmod(TOKEN_FILE, 0o600)
 
 
 async def load_token() -> str | None:
     if TOKEN_FILE.exists():
-        async with aiofiles.open(TOKEN_FILE) as f:
+        async with await anyio.open_file(TOKEN_FILE) as f:
             content = await f.read()
             try:
                 return json.loads(content).get("token")

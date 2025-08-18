@@ -138,7 +138,11 @@ readinessProbe:
   periodSeconds: 2
 
 # Additional volumes on the output Deployment definition.
-volumes: [ ]
+volumes:
+- name: jwks
+  persistentVolumeClaim:
+    claimName: beeai-jwks
+
 # - name: foo
 #   secret:
 #     secretName: mysecret

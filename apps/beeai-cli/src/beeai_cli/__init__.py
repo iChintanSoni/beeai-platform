@@ -9,6 +9,7 @@ import pydantic
 import typer
 
 import beeai_cli.commands.agent
+import beeai_cli.commands.auth
 import beeai_cli.commands.build
 import beeai_cli.commands.env
 import beeai_cli.commands.mcp

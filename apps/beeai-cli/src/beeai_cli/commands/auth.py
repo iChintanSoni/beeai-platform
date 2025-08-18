@@ -1,9 +1,10 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
 import os
 import webbrowser
+
+import anyio
 
 from beeai_cli.api import api_request
 from beeai_cli.async_typer import AsyncTyper, console
@@ -41,7 +42,7 @@ async def cli_login():
 
     console.print("\nAuthenticating...")
     for _ in range(60):
-        await asyncio.sleep(1)
+        await anyio.sleep(1)
         poll_resp = await api_request("GET", "token", params={"passcode": str(passcode)}, use_auth=False)
         if poll_resp and "token" in poll_resp:
             await save_token(poll_resp["token"])
