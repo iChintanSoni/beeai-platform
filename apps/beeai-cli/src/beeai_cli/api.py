@@ -138,5 +138,5 @@ async def a2a_client(agent_card: AgentCard, use_auth: bool = True) -> AsyncItera
     headers = {}
     if config.oidc_enabled and use_auth:
         headers["Authorization"] = await set_auth_header()
-    async with httpx.AsyncClient() as httpx_client:
+    async with httpx.AsyncClient(headers=headers) as httpx_client:
         yield ClientFactory(ClientConfig(httpx_client=httpx_client)).create(card=agent_card)
