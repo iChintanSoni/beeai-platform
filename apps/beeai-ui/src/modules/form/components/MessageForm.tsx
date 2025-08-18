@@ -3,45 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Button } from '@carbon/react';
-import type { CSSProperties } from 'react';
-
 import type { UIAgentMessage } from '#modules/messages/types.ts';
 import { getMessageForm } from '#modules/messages/utils.ts';
 
-import { FormField } from './FormField';
-import classes from './MessageForm.module.scss';
+import { FormRenderer } from './FormRenderer';
 
 interface Props {
   message: UIAgentMessage;
 }
 
 export function MessageForm({ message }: Props) {
-  const form = getMessageForm(message);
+  const formPart = getMessageForm(message);
 
-  if (!form) {
+  if (!formPart) {
     return null;
   }
 
-  const { id, title, description, columns, submit_label = 'Submit', fields } = form;
-
-  return (
-    <form id={id} className={classes.root}>
-      {title && <h2 className={classes.heading}>{title}</h2>}
-
-      {description && <p>{description}</p>}
-
-      <div className={classes.fields} style={{ '--grid-columns': columns } as CSSProperties}>
-        {fields.map((field) => (
-          <FormField key={field.id} field={field} />
-        ))}
-      </div>
-
-      <div className={classes.submit}>
-        <Button type="submit" size="md">
-          {submit_label}
-        </Button>
-      </div>
-    </form>
-  );
+  return <FormRenderer formPart={formPart} />;
 }

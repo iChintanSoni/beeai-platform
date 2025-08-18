@@ -5,4 +5,8 @@
 
 .root {
   grid-column: span var(--col-span, var(--grid-columns, 1));
+
+  :global(.cds--fieldset) {
+    min-inline-size: 0;
+  }
 }
