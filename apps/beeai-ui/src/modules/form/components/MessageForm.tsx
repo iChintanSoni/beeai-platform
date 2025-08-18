@@ -27,7 +27,7 @@ export function MessageForm({ message }: Props) {
 
   return (
     <form id={id} className={classes.root}>
-      {title && <h2>{title}</h2>}
+      {title && <h2 className={classes.heading}>{title}</h2>}
 
       {description && <p>{description}</p>}
 
@@ -37,7 +37,11 @@ export function MessageForm({ message }: Props) {
         ))}
       </div>
 
-      <Button type="submit">{submit_label}</Button>
+      <div className={classes.submit}>
+        <Button type="submit" size="md">
+          {submit_label}
+        </Button>
+      </div>
     </form>
   );
 }

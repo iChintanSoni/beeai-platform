@@ -22,13 +22,32 @@ const textField = baseField.extend({
   default_value: z.string().optional(),
 });
 
+const dateField = baseField.extend({
+  type: z.literal('date'),
+  placeholder: z.string().optional(),
+  default_value: z.string().optional(),
+});
+
+const multiSelectField = baseField.extend({
+  type: z.literal('multiselect'),
+  options: z
+    .array(
+      z.object({
+        id: z.string().nonempty(),
+        label: z.string().nonempty(),
+      }),
+    )
+    .nonempty(),
+  default_value: z.array(z.string()).optional(),
+});
+
 const checkboxField = baseField.extend({
   type: z.literal('checkbox'),
   content: z.string(),
   default_checked: z.boolean().optional(),
 });
 
-const fieldSchema = z.discriminatedUnion('type', [textField, checkboxField]);
+const fieldSchema = z.discriminatedUnion('type', [textField, dateField, multiSelectField, checkboxField]);
 
 const renderSchema = z.object({
   type: z.literal('render'),
@@ -46,6 +65,8 @@ const responseSchema = z.object({
   values: z.record(
     z.discriminatedUnion('type', [
       z.object({ type: textField.shape.type, value: z.string() }),
+      z.object({ type: dateField.shape.type, value: z.string() }),
+      z.object({ type: multiSelectField.shape.type, value: z.array(z.string()) }),
       z.object({ type: checkboxField.shape.type, value: z.boolean() }),
     ]),
   ),
@@ -53,12 +74,15 @@ const responseSchema = z.object({
 
 const schema = z.discriminatedUnion('type', [renderSchema, responseSchema]);
 
+export type TextField = z.infer<typeof textField>;
+export type DateField = z.infer<typeof dateField>;
+export type MultiSelectField = z.infer<typeof multiSelectField>;
+export type CheckboxField = z.infer<typeof checkboxField>;
+
 export type FormField = z.infer<typeof fieldSchema>;
 
 export type FormRender = z.infer<typeof renderSchema>;
-
 export type FormResponse = z.infer<typeof responseSchema>;
-
 export type FormMetadata = z.infer<typeof schema>;
 
 export const formExtension: A2AUiExtension<typeof URI, FormMetadata> = {
@@ -84,18 +108,16 @@ export const formExtensionRenderExample: FormRender = {
     },
     {
       id: 'departure',
-      type: 'text',
+      type: 'date',
       label: 'Departure',
       placeholder: 'mm/dd/yyyy',
-      required: true,
       col_span: 1,
     },
     {
       id: 'return',
-      type: 'text',
+      type: 'date',
       label: 'Return',
       placeholder: 'mm/dd/yyyy',
-      required: true,
       col_span: 1,
     },
     {
@@ -104,6 +126,19 @@ export const formExtensionRenderExample: FormRender = {
       label: 'Do you have flexibility with your travel dates?',
       content: 'Yes, I’m flexible',
       default_checked: true,
+    },
+    {
+      id: 'interests',
+      type: 'multiselect',
+      label: 'Interests',
+      options: [
+        { id: 'cuisine', label: 'Cuisine' },
+        { id: 'nature', label: 'Nature' },
+        { id: 'nightlife', label: 'Nightlife' },
+        { id: 'photography', label: 'Photography' },
+        { id: 'volunteering', label: 'Volunteering' },
+        { id: 'business', label: 'Business' },
+      ],
     },
   ],
 };
@@ -114,8 +149,9 @@ export const formExtensionResponseExample: FormResponse = {
   id: 'form-id',
   values: {
     location: { type: 'text', value: 'Japan' },
-    departure: { type: 'text', value: '10/01/2025' },
-    return: { type: 'text', value: '10/15/2025' },
+    departure: { type: 'date', value: '10/01/2025' },
+    return: { type: 'date', value: '10/15/2025' },
     flexible: { type: 'checkbox', value: true },
+    interests: { type: 'multiselect', value: ['cuisine', 'nightlife', 'photography'] },
   },
 };
