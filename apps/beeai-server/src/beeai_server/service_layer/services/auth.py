@@ -57,7 +57,7 @@ class AuthService:
 
         return RedirectResponse(idp_authorization_url)
 
-    async def handle_callback(self, request: Request, pending_tokens: dict[str, dict]):
+    async def handle_callback(self, request: Request):
         if self._oauth is None:
             raise HTTPException(status_code=503, detail="OIDC disabled in configuration")
 
@@ -175,7 +175,7 @@ class AuthService:
         </html>
         """)
 
-    async def get_token_by_passcode(self, passcode: str, pending_tokens: dict) -> JSONResponse:
+    async def get_token_by_passcode(self, passcode: str) -> JSONResponse:
         if passcode == "dev":
             return JSONResponse(status_code=200, content={"token": "beeai-dev-token"})
         async with self._uow() as uow:

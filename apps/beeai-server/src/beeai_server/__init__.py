@@ -7,7 +7,7 @@ import os
 import socket
 import sys
 
-from beeai_server.configuration import Configuration, get_configuration
+from beeai_server.configuration import get_configuration
 
 # configure logging before importing anything
 from beeai_server.logging_config import configure_logging
@@ -20,13 +20,6 @@ configure_telemetry()
 
 logger = logging.getLogger(__name__)
 
-configuration: Configuration = get_configuration()
-
-JWKS_URL = None
-
-if not configuration.auth.disable_auth:
-    JWKS_URL = configuration.auth.jwks_url
-
 
 def serve():
     config = get_configuration()
@@ -35,26 +28,6 @@ def serve():
     if sys.platform == "win32":
         logger.error("Native windows is not supported, use WSL")
         return
-
-    # Download the public jwk key set (jwks)
-    if JWKS_URL is not None:
-        os.spawnl(os.P_WAIT, "/usr/bin/wget", "/usr/bin/wget", JWKS_URL, "-O", "/jwks/pubkeys.json")
-        logger.info("Public keys downloaded from jwks endpoint OK")
-        # extract the ingestion pem from the key
-        rc = os.spawnl(
-            os.P_WAIT,
-            "/usr/bin/openssl",
-            "/usr/bin/openssl",
-            "rsa",
-            "--in",
-            "/etc/config/ingestion.key",
-            "--pubout",
-            "-out",
-            "/jwks/ingestion.pem",
-        )
-        logger.info("openssl pubout rc: %s", str(rc))
-    else:
-        logger.warning("JWKS_URL environment variable is None. OAuth will be disabled")
 
     with socket.socket(socket.AF_INET) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

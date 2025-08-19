@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyCookie, APIKeyHeader
 from kink import di
 
-from beeai_server.auth.utils import decode_jwt_token, extract_token
+from beeai_server.auth.utils import JWKS, decode_jwt_token, extract_token
 from beeai_server.configuration import Configuration
 from beeai_server.domain.models.user import User, UserRole
 from beeai_server.exceptions import EntityNotFoundError
@@ -27,6 +27,7 @@ async def get_authenticated_user(
     header_token: Annotated[str | None, Security(api_key_header)],
 ) -> User:
     if configuration.oidc.disable_oidc:
+        # raise Exception
         # Bypass OIDC validation — return a default user for dev/testing mode
         return await user_service.get_user_by_email("admin@beeai.dev")
     try:
@@ -39,7 +40,7 @@ async def get_authenticated_user(
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    claims = decode_jwt_token(token)
+    claims = decode_jwt_token(token, jwks=di[JWKS], aud=configuration.oidc.client_id)
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
