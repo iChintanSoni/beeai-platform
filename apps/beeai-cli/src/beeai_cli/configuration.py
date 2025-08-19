@@ -35,13 +35,30 @@ class Configuration(pydantic_settings.BaseSettings):
     )
     admin_password: SecretStr | None = None
     oidc_enabled: bool = False
+    auth_token: SecretStr | None = None
 
     @property
     def lima_home(self) -> pathlib.Path:
         return self.home / "lima"
 
+    @property
+    def load_auth_token(self) -> SecretStr | None:
+        if self.auth_token:
+            return self.auth_token
+
+        token_file = self.home / ".beeai" / "token.json"
+        if token_file.exists():
+            self.auth_token = SecretStr(token_file.read_text().strip())
+        return self.auth_token
+
+    def set_auth_token(self, token: str):
+        """Persist and cache auth token (after login)."""
+        self.home.mkdir(parents=True, exist_ok=True)
+        self.token_file.write_text(token)
+        self._auth_token = SecretStr(token)
+
     @asynccontextmanager
     async def use_platform_client(self) -> AsyncIterator[PlatformClient]:
         auth = ("admin", self.admin_password.get_secret_value()) if self.admin_password else None
-        async with use_platform_client(auth=auth, base_url=str(self.host)) as client:
+        async with use_platform_client(auth=auth, auth_token=self.auth_token, base_url=str(self.host)) as client:
             yield client

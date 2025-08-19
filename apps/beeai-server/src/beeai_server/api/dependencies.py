@@ -5,16 +5,17 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Query, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
+from fastapi import Depends, HTTPException, Query, Security, status
+from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
 from jwt import PyJWTError
 from kink import di
 from pydantic import ConfigDict
 
-from beeai_server.api.auth import ROLE_PERMISSIONS, verify_internal_jwt
+from beeai_server.api.auth import JWKS, ROLE_PERMISSIONS, decode_oauth_jwt, extract_oauth_token, verify_internal_jwt
 from beeai_server.configuration import Configuration
 from beeai_server.domain.models.permissions import AuthorizedUser, Permissions
 from beeai_server.domain.models.user import User, UserRole
+from beeai_server.exceptions import EntityNotFoundError
 from beeai_server.service_layer.services.a2a import A2AProxyService
 from beeai_server.service_layer.services.auth import AuthService
 from beeai_server.service_layer.services.contexts import ContextService
@@ -39,6 +40,45 @@ UserFeedbackServiceDependency = Annotated[UserFeedbackService, Depends(lambda: d
 AuthServiceDependency = Annotated[AuthService, Depends(lambda: di[AuthService])]
 
 logger = logging.getLogger(__name__)
+api_key_cookie = APIKeyCookie(name="beeai-platform", auto_error=False)
+
+
+async def authenticate_oauth_user(
+    bearer_auth: HTTPAuthorizationCredentials,
+    cookie_auth: str | None,
+    user_service: UserServiceDependency,
+    configuration: ConfigurationDependency,
+) -> AuthorizedUser:
+    """
+    Authenticate using an OIDC/OAuth2 JWT bearer token with JWKS.
+    Creates the user if it doesn't exist.
+    """
+    try:
+        token = extract_oauth_token(bearer_auth, cookie_auth)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid Authorization header: {e}",
+        ) from e
+
+    claims = decode_oauth_jwt(token, jwks=di[JWKS], aud=configuration.oidc.client_id)
+    if not claims:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    email = claims.get("email")
+    is_admin = email in configuration.oidc.admin_emails
+
+    try:
+        user = await user_service.get_user_by_email(email=email)
+    except EntityNotFoundError:
+        role = UserRole.admin if is_admin else UserRole.user
+        user = await user_service.create_user(email=email, role=role)
+
+    return AuthorizedUser(
+        user=user,
+        global_permissions=ROLE_PERMISSIONS[user.role],
+        context_permissions=ROLE_PERMISSIONS[user.role],
+    )
 
 
 async def authorized_user(
@@ -46,6 +86,7 @@ async def authorized_user(
     configuration: ConfigurationDependency,
     basic_auth: Annotated[HTTPBasicCredentials | None, Depends(HTTPBasic(auto_error=False))],
     bearer_auth: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))],
+    cookie_auth: Annotated[str | None, Security(api_key_cookie)],
 ) -> AuthorizedUser:
     """
     TODO: authentication is not impelemented yet, for now, this always returns the dummy user.
@@ -63,8 +104,8 @@ async def authorized_user(
                 token_context_id=parsed_token.context_id,
             )
         except PyJWTError:
-            if not configuration.auth.disable_auth:
-                raise NotImplementedError("Oauth is not implemented yet.") from None
+            if not configuration.oidc.disable_oidc:
+                return await authenticate_oauth_user(bearer_auth, cookie_auth, user_service, configuration)
             # TODO: update agents
             logger.warning("Bearer token is invalid, agent is not probably not using llm extension correctly")
 
