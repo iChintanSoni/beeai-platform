@@ -4,15 +4,13 @@ import logging
 
 from fastapi import APIRouter, Query, Request
 
-from beeai_server.api.dependencies import AuthServiceDependency, ConfigurationDependency
+from beeai_server.api.dependencies import AuthServiceDependency
 
 logger = logging.getLogger(__name__)
 
 SLASH_LOGIN = "/login"
 
 router = APIRouter()
-
-pending_tokens: dict[str, dict] = {}
 
 
 @router.get("/login")
@@ -29,8 +27,8 @@ async def login(
 
 
 @router.get("/auth/callback")
-async def auth_callback(request: Request, configuration: ConfigurationDependency, auth_service: AuthServiceDependency):
-    return await auth_service.handle_callback(request, pending_tokens)
+async def auth_callback(request: Request, auth_service: AuthServiceDependency):
+    return await auth_service.handle_callback(request)
 
 
 @router.get("/display-passcode")
@@ -40,4 +38,4 @@ async def display_passcode(auth_service: AuthServiceDependency, passcode: str = 
 
 @router.get("/token")
 async def get_token(auth_service: AuthServiceDependency, passcode: str = Query(None)):
-    return await auth_service.get_token_by_passcode(passcode, pending_tokens)
+    return await auth_service.get_token_by_passcode(passcode)

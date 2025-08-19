@@ -17,7 +17,6 @@ from beeai_server.api.dependencies import (
 from beeai_server.api.routes.a2a import proxy_request
 from beeai_server.api.schema.common import PaginatedResponse
 from beeai_server.api.schema.provider import CreateProviderRequest
-from beeai_server.auth.dependencies import AdminUserDependency
 from beeai_server.domain.models.permissions import AuthorizedUser
 from beeai_server.domain.models.provider import ProviderWithState
 from beeai_server.utils.fastapi import streaming_response
@@ -28,7 +27,6 @@ router = fastapi.APIRouter()
 @router.post("")
 async def create_provider(
     _: Annotated[AuthorizedUser, Depends(RequiresPermissions(providers={"write"}))],
-    user: AdminUserDependency,
     request: CreateProviderRequest,
     provider_service: ProviderServiceDependency,
     configuration: ConfigurationDependency,
@@ -79,7 +77,6 @@ async def delete_provider(
     id: UUID,
     provider_service: ProviderServiceDependency,
     _: Annotated[AuthorizedUser, Depends(RequiresPermissions(providers={"write"}))],
-    user: AdminUserDependency,
 ) -> None:
     await provider_service.delete_provider(provider_id=id)
 
@@ -87,7 +84,6 @@ async def delete_provider(
 @router.get("/{id}/logs", status_code=fastapi.status.HTTP_204_NO_CONTENT)
 async def stream_logs(
     _: Annotated[AuthorizedUser, Depends(RequiresPermissions(providers={"write"}))],
-    user: AdminUserDependency,
     id: UUID,
     provider_service: ProviderServiceDependency,
 ) -> StreamingResponse:
