@@ -138,10 +138,7 @@ readinessProbe:
   periodSeconds: 2
 
 # Additional volumes on the output Deployment definition.
-volumes:
-- name: jwks
-  persistentVolumeClaim:
-    claimName: beeai-jwks
+volumes: [ ]
 
 # - name: foo
 #   secret:
@@ -149,18 +146,10 @@ volumes:
 #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
-# volumeMounts: [ ]
+volumeMounts: [ ]
 # - name: foo
 #   mountPath: "/etc/foo"
 #   readOnly: true
-
-volumeMounts:
-- name: jwks
-  mountPath: /jwks
-
-storage:
-  storage_class: local-path
-
 
 nodeSelector: { }
 
