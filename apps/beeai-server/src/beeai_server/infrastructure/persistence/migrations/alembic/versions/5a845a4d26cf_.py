@@ -3,9 +3,9 @@
 
 """add token table
 
-Revision ID: 5340bf23ca87
-Revises: 779011da771d
-Create Date: 2025-08-18 11:20:45.712236
+Revision ID: 5a845a4d26cf
+Revises: 5dec926744d0
+Create Date: 2025-08-20 17:28:50.686706
 
 """
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "5340bf23ca87"
-down_revision: str | None = "779011da771d"
+revision: str = "5a845a4d26cf"
+down_revision: str | None = "5dec926744d0"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
