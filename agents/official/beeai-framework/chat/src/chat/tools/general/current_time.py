@@ -31,7 +31,4 @@ class CurrentTimeTool(Tool[CurrentTimeToolInput]):
         return StringToolOutput(current_time_readable)
 
     def _create_emitter(self) -> Emitter:
-        return Emitter.root().child(
-            namespace=["tool", "current_time"],
-            creator=self,
-        )
+        return Emitter.root().child(namespace=["tool", "current_time"], creator=self)

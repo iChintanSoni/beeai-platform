@@ -147,49 +147,21 @@ class ActAlwaysFirstRequirement(Requirement[RequirementAgentRunState]):
         if last_step and last_step.tool and last_step.tool.name == "act":
             assert isinstance(last_step.tool, ActTool)
             if last_step.error is not None:
-                return [
-                    Rule(
-                        target="act",
-                        forced=True,
-                        allowed=True,
-                        prevent_stop=False,
-                        hidden=False,
-                    )
-                ]
+                return [Rule(target="act", forced=True, allowed=True, prevent_stop=False, hidden=False)]
 
             if last_step.output is None or not isinstance(last_step.output, ActToolOutput):
                 raise ValueError("Last step output must be an instance of ActToolOutput.")
             selected_tool = last_step.output.result.selected_tool
-            return [
-                Rule(
-                    target=selected_tool,
-                    forced=True,
-                    allowed=True,
-                    prevent_stop=False,
-                    hidden=False,
-                )
-            ]
+            return [Rule(target=selected_tool, forced=True, allowed=True, prevent_stop=False, hidden=False)]
 
         # Hide all tools except ActTool on the first step
         rules = [
-            Rule(
-                target=t.name,
-                hidden=True,
-                allowed=False,
-                prevent_stop=False,
-                forced=False,
-            )
+            Rule(target=t.name, hidden=True, allowed=False, prevent_stop=False, forced=False)
             for t in self.tools
             if not isinstance(t, ActTool)
         ]
         return [
-            Rule(
-                target="act",
-                forced=True,
-                allowed=True,
-                prevent_stop=False,
-                hidden=False,
-            ),
+            Rule(target="act", forced=True, allowed=True, prevent_stop=False, hidden=False),
             *rules,
         ]
 

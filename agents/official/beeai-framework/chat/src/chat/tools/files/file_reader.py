@@ -4,15 +4,11 @@
 from typing import List, Literal
 
 from beeai_framework.emitter import Emitter
-from beeai_framework.tools import (
-    JSONToolOutput,
-    Tool,
-    ToolRunOptions,
-)
+from beeai_framework.tools import JSONToolOutput, Tool, ToolRunOptions
+from chat.tools.files.model import FileChatInfo
 from pydantic import BaseModel, Field, create_model
 
-from chat.helpers.platform import read_file
-from chat.tools.files.model import FileChatInfo
+from beeai_sdk.platform import File
 from chat.tools.files.utils import format_size
 
 
@@ -33,7 +29,9 @@ class FileReadInputBase(BaseModel):
     filenames: List[str]
 
 
-def create_file_reader_tool_class(files: list[FileChatInfo]) -> type[Tool]:
+def create_file_reader_tool_class(
+    files: list[FileChatInfo],
+) -> type[Tool[BaseModel, ToolRunOptions, FileReaderToolOutput]]:
     """
     Dynamically creates a FileReaderTool class with a schema tailored to the provided files.
 
@@ -59,7 +57,7 @@ def create_file_reader_tool_class(files: list[FileChatInfo]) -> type[Tool]:
 
     if len(files):
         file_descriptions = "\n".join(
-            f"- `{file.display_filename}`[{file.origin_type.value}]: {file.content_type or 'unknown type'}, {format_size(file.file_size_bytes)}"
+            f"- `{file.file.filename}`[{file.origin_type}]: {file.file.content_type}, {format_size(file.file.file_size_bytes)}"
             for file in files
         )
 
@@ -117,7 +115,8 @@ def create_file_reader_tool_class(files: list[FileChatInfo]) -> type[Tool]:
                 file_info = self.files_dict[filename]
 
                 # pull the first (only) MessagePart from the async-generator
-                content, content_type = await read_file(file_info.url)
+                async with File.load_content(file_info.file.id) as file:
+                    content = file.text
                 if content is None:
                     raise ValueError(f"File content is None for {filename}.")
 
@@ -127,9 +126,6 @@ def create_file_reader_tool_class(files: list[FileChatInfo]) -> type[Tool]:
             return FileReaderToolOutput(result=FileReaderToolResult(file_contents=file_contents))
 
         def _create_emitter(self) -> Emitter:
-            return Emitter.root().child(
-                namespace=["tool", "file_reader"],
-                creator=self,
-            )
+            return Emitter.root().child(namespace=["tool", "file_reader"], creator=self)
 
-    return _FileReaderTool  # type: ignore[return-value]
+    return _FileReaderTool

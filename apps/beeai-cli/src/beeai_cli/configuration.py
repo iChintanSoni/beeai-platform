@@ -42,23 +42,37 @@ class Configuration(pydantic_settings.BaseSettings):
         return self.home / "lima"
 
     @property
+    def token_file(self) -> pathlib.Path:
+        return self.home / "token.json"
+
+    @property
     def load_auth_token(self) -> SecretStr | None:
         if self.auth_token:
             return self.auth_token
 
-        token_file = self.home / ".beeai" / "token.json"
-        if token_file.exists():
-            self.auth_token = SecretStr(token_file.read_text().strip())
-        return self.auth_token
+        if self.token_file.exists():
+            token = self.token_file.read_text().strip()
+            if token:
+                self.auth_token = SecretStr(token)
+                return self.auth_token
+        return None
 
     def set_auth_token(self, token: str):
         """Persist and cache auth token (after login)."""
         self.home.mkdir(parents=True, exist_ok=True)
         self.token_file.write_text(token)
-        self._auth_token = SecretStr(token)
+        self.auth_token = SecretStr(token)
+        print(f"here----------------{self.auth_token}")
+
+    def clear_auth_token(self):
+        """Remove persisted token and clear from memory."""
+        self.auth_token = None
+        if self.token_file.exists():
+            self.token_file.unlink()
 
     @asynccontextmanager
     async def use_platform_client(self) -> AsyncIterator[PlatformClient]:
         auth = ("admin", self.admin_password.get_secret_value()) if self.admin_password else None
-        async with use_platform_client(auth=auth, auth_token=self.auth_token, base_url=str(self.host)) as client:
+        auth_token = self.load_auth_token.get_secret_value() if self.load_auth_token else None
+        async with use_platform_client(auth=auth, auth_token=auth_token, base_url=str(self.host), timeout=30) as client:
             yield client

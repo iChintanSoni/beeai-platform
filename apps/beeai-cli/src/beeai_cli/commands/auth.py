@@ -1,7 +1,6 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import webbrowser
 
 import anyio
@@ -9,7 +8,6 @@ import anyio
 from beeai_cli.api import api_request
 from beeai_cli.async_typer import AsyncTyper, console
 from beeai_cli.configuration import Configuration
-from beeai_cli.token_store import clear_token, save_token
 
 app = AsyncTyper()
 
@@ -18,7 +16,6 @@ BASE_URL = str(config.host).rstrip("/")
 API_BASE_URL = f"{BASE_URL}/api/v1/"
 LOGIN_URL = f"{API_BASE_URL}login"
 CALLBACK_URL = f"{API_BASE_URL}display-passcode"
-TOKEN_PATH = os.path.expanduser("~/.beeai_token")
 
 
 @app.command("login")
@@ -45,9 +42,14 @@ async def cli_login():
         await anyio.sleep(1)
         poll_resp = await api_request("GET", "token", params={"passcode": str(passcode)}, use_auth=False)
         if poll_resp and "token" in poll_resp:
-            await save_token(poll_resp["token"])
-            console.print("\n[bold green]Ok! Login successful.[/bold green]")
-            return
+            token_value = poll_resp["token"]
+            print(token_value)
+            if isinstance(token_value, dict):  # handle nested case
+                token_value = token_value.get("access_token")
+            if token_value:
+                config.set_auth_token(token_value)
+                console.print("\n[bold green]Ok! Login successful.[/bold green]")
+                return
     console.print("\n [bold red] Login timed out or not successful. [/bold red] ")
     raise RuntimeError("Login failed.")
 
@@ -57,5 +59,5 @@ async def cli_logout():
     """
     Logout to BeeAI.
     """
-    await clear_token()
-    console.print("Logout successful!")
+    config.clear_auth_token()
+    console.print("\n[bold yellow]You have been logged out.[/bold yellow]")

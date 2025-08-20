@@ -73,10 +73,7 @@ class ClarificationTool(Tool[ClarificationSchema]):
         return StringToolOutput("Question has been sent")
 
     def _create_emitter(self) -> Emitter:
-        return Emitter.root().child(
-            namespace=["tool", "clarification"],
-            creator=self,
-        )
+        return Emitter.root().child(namespace=["tool", "clarification"], creator=self)
 
 
 def clarification_tool_middleware(ctx: RunContext) -> None:
