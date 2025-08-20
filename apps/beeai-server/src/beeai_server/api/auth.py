@@ -129,7 +129,9 @@ def extract_oauth_token(
     return cookie_token
 
 
-def decode_oauth_jwt(token: str, jwks: dict | None = None, aud: str | None = None) -> dict | None:
+def decode_oauth_jwt(
+    token: str, jwks: dict | None = None, aud: str | None = None, issuer: str | None = None
+) -> dict | None:
     jwks = jwks
     aud = aud
     # Decode JWT using keys from JWKS
@@ -137,7 +139,9 @@ def decode_oauth_jwt(token: str, jwks: dict | None = None, aud: str | None = Non
         try:
             obj_key = jwt.PyJWK(pub_key)
             # explicitly only check exp and iat, nbf (not before time) is not included in w3id
-            claims = jwt.decode(token, obj_key, algorithms=["RS256"], options=None, verify=True, audience=aud)
+            claims = jwt.decode(
+                token, obj_key, algorithms=["RS256"], options=None, verify=True, audience=aud, issuer=issuer
+            )
             logger.debug("Verified token claims: %s", json.dumps(claims))
             return claims
         except jwt.ExpiredSignatureError as err:

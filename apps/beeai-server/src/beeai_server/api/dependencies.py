@@ -68,7 +68,7 @@ async def authenticate_oauth_user(
             detail=f"Invalid Authorization header: {e}",
         ) from e
 
-    claims = decode_oauth_jwt(token, jwks=di[JWKS], aud="beeai-server")
+    claims = decode_oauth_jwt(token, jwks=di[JWKS], aud="beeai-server", issuer=f"{configuration.oidc.issuer}")
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
