@@ -74,5 +74,5 @@ class Configuration(pydantic_settings.BaseSettings):
     async def use_platform_client(self) -> AsyncIterator[PlatformClient]:
         auth = ("admin", self.admin_password.get_secret_value()) if self.admin_password else None
         auth_token = self.load_auth_token.get_secret_value() if self.load_auth_token else None
-        async with use_platform_client(auth=auth, auth_token=auth_token, base_url=str(self.host), timeout=30) as client:
+        async with use_platform_client(auth=auth, auth_token=auth_token, base_url=str(self.host)) as client:
             yield client
