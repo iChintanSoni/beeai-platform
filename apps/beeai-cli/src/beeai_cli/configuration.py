@@ -62,7 +62,6 @@ class Configuration(pydantic_settings.BaseSettings):
         self.home.mkdir(parents=True, exist_ok=True)
         self.token_file.write_text(token)
         self.auth_token = SecretStr(token)
-        print(f"here----------------{self.auth_token}")
 
     def clear_auth_token(self):
         """Remove persisted token and clear from memory."""
