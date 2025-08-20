@@ -15,15 +15,15 @@ import type {
   UITrajectoryPart,
   UIUserMessage,
 } from '#modules/messages/types.ts';
-import { UIFormType, UIMessagePartKind } from '#modules/messages/types.ts';
+import { UIMessagePartKind } from '#modules/messages/types.ts';
 import type { ContextId, TaskId } from '#modules/tasks/api/types.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
 import { PLATFORM_FILE_CONTENT_URL_BASE } from './constants';
 import type { Citation } from './extensions/ui/citation';
 import { citationExtension } from './extensions/ui/citation';
-import type { FormMetadata } from './extensions/ui/form';
-import { formExtension } from './extensions/ui/form';
+import type { FormRender } from './extensions/ui/form';
+import { formMessageExtension } from './extensions/ui/form';
 import type { TrajectoryMetadata } from './extensions/ui/trajectory';
 import { trajectoryExtension } from './extensions/ui/trajectory';
 import { extractUiExtensionData } from './extensions/utils';
@@ -32,7 +32,7 @@ export const extractCitation = extractUiExtensionData(citationExtension);
 
 export const extractTrajectory = extractUiExtensionData(trajectoryExtension);
 
-export const extractForm = extractUiExtensionData(formExtension);
+export const extractForm = extractUiExtensionData(formMessageExtension);
 
 export function extractTextFromMessage(message: Message | undefined) {
   const text = message?.parts
@@ -60,7 +60,7 @@ export function convertMessageParts(uiParts: UIMessagePart[]): Part[] {
           return {
             kind: 'file',
             file: {
-              uri: `${PLATFORM_FILE_CONTENT_URL_BASE}${id}`,
+              uri: getFilePlatformUrl(id),
               name: filename,
               mimeType: type,
             },
@@ -162,13 +162,7 @@ export function createTextPart(text: string): UITextPart {
   return textPart;
 }
 
-export function createFormPart(form: FormMetadata): UIFormPart | null {
-  const { type } = form;
-
-  if (type === UIFormType.Response) {
-    return null;
-  }
-
+export function createFormPart(form: FormRender): UIFormPart | null {
   const formPart: UIFormPart = {
     kind: UIMessagePartKind.Form,
     // TODO: Temporary for testing purposes
@@ -176,4 +170,8 @@ export function createFormPart(form: FormMetadata): UIFormPart | null {
   };
 
   return formPart;
+}
+
+export function getFilePlatformUrl(id: string) {
+  return `${PLATFORM_FILE_CONTENT_URL_BASE}${id}`;
 }

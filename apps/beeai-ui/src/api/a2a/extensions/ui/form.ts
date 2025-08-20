@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { getFileContentUrl } from '#modules/files/utils.ts';
 
-import type { A2AUiExtension } from '../types';
+import type { A2AServiceExtension, A2AUiExtension } from '../types';
 
 const URI = 'https://a2a-extensions.beeai.dev/ui/form/v1';
 
@@ -113,8 +113,6 @@ const responseSchema = z.object({
   ),
 });
 
-const schema = z.discriminatedUnion('type', [renderSchema, responseSchema]);
-
 export type TextField = z.infer<typeof textField>;
 export type DateField = z.infer<typeof dateField>;
 export type FileField = z.infer<typeof fileField>;
@@ -131,10 +129,14 @@ export type CheckboxFieldValue = z.infer<typeof checkboxFieldValue>;
 
 export type FormRender = z.infer<typeof renderSchema>;
 export type FormResponse = z.infer<typeof responseSchema>;
-export type FormMetadata = z.infer<typeof schema>;
 
-export const formExtension: A2AUiExtension<typeof URI, FormMetadata> = {
-  getMessageMetadataSchema: () => z.object({ [URI]: schema }).partial(),
+export const formMessageExtension: A2AUiExtension<typeof URI, FormRender> = {
+  getMessageMetadataSchema: () => z.object({ [URI]: renderSchema }).partial(),
+  getUri: () => URI,
+};
+export const formDemandExtension: A2AServiceExtension<typeof URI, z.infer<typeof renderSchema>, FormResponse> = {
+  getDemandsSchema: () => renderSchema,
+  getFulfillmentSchema: () => responseSchema,
   getUri: () => URI,
 };
 
@@ -225,7 +227,7 @@ export const formExtensionResponseExample: FormResponse = {
       type: 'file',
       value: [
         {
-          uri: getFileContentUrl({ id: '21be044d-8052-46ef-b1ed-d93fa2cba31e' }),
+          uri: getFileContentUrl('21be044d-8052-46ef-b1ed-d93fa2cba31e'),
           name: 'test.txt',
           mime_type: 'text/plain',
         },

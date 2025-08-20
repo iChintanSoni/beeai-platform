@@ -28,19 +28,25 @@ export function processMessageMetadata(message: Message): UIMessagePart[] {
   const citations = extractCitation(message.metadata)?.citations;
   const form = extractForm(message.metadata) ?? formExtensionRenderExample; // TODO: Temporary for testing purposes
 
+  const parts: UIMessagePart[] = [];
+
   if (trajectory) {
-    return [createTrajectoryPart(trajectory)];
-  } else if (citations) {
+    parts.push(createTrajectoryPart(trajectory));
+  }
+  if (citations) {
     const sourceParts = citations.map((citation) => createSourcePart(citation, message.taskId)).filter(isNotNull);
 
-    return [...sourceParts];
-  } else if (form) {
+    parts.push(...sourceParts);
+  }
+  if (form) {
     const formPart = createFormPart(form);
 
-    return [formPart].filter(isNotNull);
+    if (formPart) {
+      parts.push(formPart);
+    }
   }
 
-  return [];
+  return parts;
 }
 
 export function processTextPart({ text }: TextPart): UIMessagePart[] {

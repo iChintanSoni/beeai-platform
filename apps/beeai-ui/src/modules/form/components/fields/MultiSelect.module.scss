@@ -12,6 +12,7 @@
 .option {
   &:global(.cds--tag) {
     background-color: $layer-02;
+    color: $text-primary;
     &:hover {
       background-color: $layer-hover-02;
     }

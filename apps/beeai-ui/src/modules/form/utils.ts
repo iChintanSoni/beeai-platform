@@ -6,8 +6,8 @@
 import { match } from 'ts-pattern';
 
 import type { FormField } from '#api/a2a/extensions/ui/form.ts';
+import { getFilePlatformUrl } from '#api/a2a/utils.ts';
 import type { FileEntity } from '#modules/files/types.ts';
-import { getFileContentUrl } from '#modules/files/utils.ts';
 
 import type { FormValues } from './types';
 
@@ -40,7 +40,7 @@ export function convertFileToFileFieldValue(file: FileEntity) {
   const { type } = originalFile;
 
   const value = {
-    uri: getFileContentUrl({ id, addBase: true }),
+    uri: getFilePlatformUrl(id),
     name: filename,
     mime_type: type,
   };

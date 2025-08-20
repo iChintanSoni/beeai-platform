@@ -66,7 +66,7 @@ export function getMessageTrajectories(message: UIMessage) {
 }
 
 export function getMessageForm(message: UIMessage) {
-  const form = message.parts.find((part) => part.kind === UIMessagePartKind.Form);
+  const form = message.parts.findLast((part) => part.kind === UIMessagePartKind.Form);
 
   return form;
 }

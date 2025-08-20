@@ -50,13 +50,13 @@ export function ChatAgentMessage({ message }: Props) {
         </>
       )}
 
-      <MessageForm message={message} />
-
       <MessageFiles message={message} />
 
       <MessageSources message={message} />
 
       <MessageTrajectories message={message} />
+
+      <MessageForm message={message} />
 
       <MessageActions message={message} className={classes.actions} contentRef={contentRef} isVisible={showActions} />
     </div>
