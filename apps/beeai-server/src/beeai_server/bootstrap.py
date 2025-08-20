@@ -9,7 +9,7 @@ from anyio import Path
 from kink import Container, di
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from beeai_server.auth.utils import JWKS, setup_jwks
+from beeai_server.api.auth import JWKS, setup_jwks
 from beeai_server.configuration import Configuration, get_configuration
 from beeai_server.domain.repositories.file import IObjectStorageRepository, ITextExtractionBackend
 from beeai_server.infrastructure.kubernetes.provider_deployment_manager import KubernetesProviderDeploymentManager

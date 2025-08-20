@@ -11,7 +11,14 @@ from jwt import PyJWTError
 from kink import di
 from pydantic import ConfigDict
 
-from beeai_server.api.auth import JWKS, ROLE_PERMISSIONS, decode_oauth_jwt, extract_oauth_token, verify_internal_jwt
+from beeai_server.api.auth import (
+    JWKS,
+    ROLE_PERMISSIONS,
+    decode_oauth_jwt,
+    extract_oauth_token,
+    fetch_user_info,
+    verify_internal_jwt,
+)
 from beeai_server.configuration import Configuration
 from beeai_server.domain.models.permissions import AuthorizedUser, Permissions
 from beeai_server.domain.models.user import User, UserRole
@@ -61,11 +68,18 @@ async def authenticate_oauth_user(
             detail=f"Invalid Authorization header: {e}",
         ) from e
 
-    claims = decode_oauth_jwt(token, jwks=di[JWKS], aud=configuration.oidc.client_id)
+    claims = decode_oauth_jwt(token, jwks=di[JWKS], aud="beeai-server")
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     email = claims.get("email")
+    if not email:
+        userinfo = await fetch_user_info(token, f"{configuration.oidc.issuer}/userinfo")
+        email = userinfo.get("email")
+
+    if not email:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not available in token or userinfo")
+
     is_admin = email in configuration.oidc.admin_emails
 
     try:

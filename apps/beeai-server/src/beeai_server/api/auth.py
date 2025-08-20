@@ -6,8 +6,10 @@ from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
+import httpx
 import jwt
-from fastapi import requests
+import requests
+from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import AwareDatetime, BaseModel
 
@@ -146,3 +148,17 @@ def decode_oauth_jwt(token: str, jwks: dict | None = None, aud: str | None = Non
 
     logger.info("All JWT verifications failed.")
     return None
+
+
+async def fetch_user_info(token: str, userinfo_endpoint: str) -> dict:
+    """Fetch user info from OIDC userinfo endpoint using access token"""
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(userinfo_endpoint, headers={"Authorization": f"Bearer {token}"})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Failed to fetch user info")
+        return resp.json()
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Userinfo endpoint unreachable: {e}"
+        ) from e
