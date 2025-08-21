@@ -144,7 +144,7 @@ oidc:
   ]
 ```
 
-Note: the `class` in the providers entry must be "IBM".
+Note: The `name` in the providers entry must be one of "w3id", "IBMiD", or "ibm".
 
 - When debugging the ui component (See debugging individual components), copy the env.example as .env and update the following oidc specific values:
 
