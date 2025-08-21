@@ -180,6 +180,11 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
             message.status = UIMessageStatus.InputRequired;
             message.parts.push({ kind: UIMessagePartKind.Form, ...result.form });
           });
+        } else if (result && result.type === RunResultType.AuthRequired) {
+          updateCurrentAgentMessage((message) => {
+            message.status = UIMessageStatus.InputRequired;
+            message.parts.push({ kind: UIMessagePartKind.Auth, url: result.url, taskId: result.taskId });
+          });
         } else {
           updateCurrentAgentMessage((message) => {
             message.status = UIMessageStatus.Completed;
@@ -240,6 +245,31 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
     [checkPendingRun, run],
   );
 
+  const startAuth = useCallback(
+    (url: string, taskId: TaskId) => {
+      const popup = window.open(url);
+      if (!popup) {
+        throw new Error('Failed to open popup');
+      }
+
+      popup.focus();
+      window.addEventListener('message', async (msg) => {
+        if (msg) {
+          popup.close();
+
+          const userMessage: UIUserMessage = {
+            id: uuid(),
+            role: Role.User,
+            parts: [],
+            auth: msg.data.redirect_uri,
+          };
+          await run(userMessage, taskId);
+        }
+      });
+    },
+    [checkPendingRun, run],
+  );
+
   const sources = useMemo(() => getMessagesSourcesMap(messages), [messages]);
 
   const lastAgentMessage = getMessages().findLast(isAgentMessage);
@@ -268,6 +298,7 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
       stats,
       chat,
       submitForm,
+      startAuth,
       cancel,
       clear,
     };

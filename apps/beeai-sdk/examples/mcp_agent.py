@@ -1,6 +1,7 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
@@ -34,8 +35,11 @@ async def mcp_agent(
 
     async with mcp.create_client() as (read, write), ClientSession(read, write) as session:
         await session.initialize()
-        result = await session.list_tools()
-        yield f"These are the tools available to me: {[tool.name for tool in result.tools]}"
+        result = await session.call_tool("notion-get-self", {})
+
+        json_data = json.loads(result.content[0].text)
+        bot_owner_user_name = json_data.get("bot", {}).get("owner", {}).get("user", {}).get("name")
+        yield bot_owner_user_name
 
 
 if __name__ == "__main__":
