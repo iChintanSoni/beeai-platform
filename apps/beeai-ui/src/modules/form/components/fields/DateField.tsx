@@ -7,7 +7,7 @@ import { DatePicker, DatePickerInput } from '@carbon/react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import type { DateField } from '#api/a2a/extensions/ui/form.ts';
-import type { DateFieldValues } from '#modules/form/types.ts';
+import type { ValuesOfField } from '#modules/form/types.ts';
 
 interface Props {
   field: DateField;
@@ -16,20 +16,20 @@ interface Props {
 export function DateField({ field }: Props) {
   const { id, label, placeholder } = field;
 
-  const { control } = useFormContext<DateFieldValues>();
+  const { control } = useFormContext<ValuesOfField<DateField>>();
 
   return (
     <Controller
-      name={id}
+      name={`${id}.value`}
       control={control}
       render={({ field: { value, onChange } }) => (
         <DatePicker
           datePickerType="single"
-          value={value}
+          value={value ?? undefined}
           onChange={(_, currentDateString) => onChange(currentDateString)}
           allowInput
         >
-          <DatePickerInput id={id} size="lg" labelText={label} placeholder={placeholder} />
+          <DatePickerInput id={id} size="lg" labelText={label} placeholder={placeholder ?? undefined} />
         </DatePicker>
       )}
     />

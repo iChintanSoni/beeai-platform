@@ -9,7 +9,7 @@ import { useCallback } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import type { MultiSelectField } from '#api/a2a/extensions/ui/form.ts';
-import type { MultiSelectFieldValues } from '#modules/form/types.ts';
+import type { ValuesOfField } from '#modules/form/types.ts';
 
 import classes from './MultiSelect.module.scss';
 
@@ -20,7 +20,7 @@ interface Props {
 export function MultiSelectField({ field }: Props) {
   const { id, label, options } = field;
 
-  const { control } = useFormContext<MultiSelectFieldValues>();
+  const { control } = useFormContext<ValuesOfField<MultiSelectField>>();
 
   const toggle = useCallback(
     ({ value, id, onChange }: { value: string[]; id: string; onChange: (value: string[]) => void }) => {
@@ -35,7 +35,7 @@ export function MultiSelectField({ field }: Props) {
   return (
     <FormGroup legendText={label}>
       <Controller
-        name={id}
+        name={`${id}.value`}
         control={control}
         render={({ field: { value, onChange } }) => (
           <ul className={classes.root}>

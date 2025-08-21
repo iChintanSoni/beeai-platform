@@ -3,19 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type {
-  CheckboxFieldValue,
-  DateFieldValue,
-  FileFieldValue,
-  FormResponse,
-  MultiSelectFieldValue,
-  TextFieldValue,
-} from '#api/a2a/extensions/ui/form.ts';
+import type { FormField, FormResponseValues } from '#api/a2a/extensions/ui/form.ts';
 
-export type FormValues = Record<string, FormResponse['values'][number]['value']>;
+export type RunFormValues = Record<string, FormResponseValues>;
 
-export type TextFieldValues = Record<string, TextFieldValue['value']>;
-export type DateFieldValues = Record<string, DateFieldValue['value']>;
-export type FileFieldValues = Record<string, FileFieldValue['value']>;
-export type MultiSelectFieldValues = Record<string, MultiSelectFieldValue['value']>;
-export type CheckboxFieldValues = Record<string, CheckboxFieldValue['value']>;
+export type ValuesOfField<F extends FormField> = Record<string, Extract<FormResponseValues, { type: F['type'] }>>;

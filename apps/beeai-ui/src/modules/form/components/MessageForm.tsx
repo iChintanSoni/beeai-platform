@@ -6,6 +6,7 @@
 import type { UIAgentMessage } from '#modules/messages/types.ts';
 import { getMessageForm } from '#modules/messages/utils.ts';
 
+import type { RunFormValues } from '../types';
 import { FormRenderer } from './FormRenderer';
 
 interface Props {
@@ -19,5 +20,12 @@ export function MessageForm({ message }: Props) {
     return null;
   }
 
-  return <FormRenderer formPart={formPart} />;
+  return (
+    <FormRenderer
+      definition={formPart}
+      onSubmit={(values: RunFormValues) => {
+        console.log(values);
+      }}
+    />
+  );
 }

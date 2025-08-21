@@ -4,36 +4,35 @@
  */
 
 import { Button } from '@carbon/react';
-import { type CSSProperties, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 
-import type { UIFormPart } from '#modules/messages/types.ts';
+import type { FormRender } from '#api/a2a/extensions/ui/form.ts';
 
-import type { FormValues } from '../types';
+import type { RunFormValues } from '../types';
 import { getDefaultValues } from '../utils';
 import { FormField } from './FormField';
 import classes from './FormRenderer.module.scss';
 
 interface Props {
-  formPart: UIFormPart;
+  definition: FormRender;
+  defaultTitle?: string;
+  onSubmit: (values: RunFormValues) => void;
 }
 
-export function FormRenderer({ formPart }: Props) {
-  const { id, title, description, columns, submit_label = 'Submit', fields } = formPart;
+export function FormRenderer({ definition, defaultTitle, onSubmit }: Props) {
+  const { id, title, description, columns, submit_label, fields } = definition;
 
   const defaultValues = getDefaultValues(fields);
 
-  const form = useForm<FormValues>({ defaultValues });
+  const form = useForm<RunFormValues>({ defaultValues });
 
-  const onSubmit = useCallback((values: FormValues) => {
-    // TODO: Temporary for testing purposes
-    console.log(values);
-  }, []);
+  const heading = title ?? defaultTitle;
 
   return (
     <FormProvider {...form}>
       <form id={id} className={classes.root} onSubmit={form.handleSubmit(onSubmit)}>
-        {title && <h2 className={classes.heading}>{title}</h2>}
+        {heading && <h2 className={classes.heading}>{heading}</h2>}
 
         {description && <p>{description}</p>}
 
@@ -45,7 +44,7 @@ export function FormRenderer({ formPart }: Props) {
 
         <div className={classes.submit}>
           <Button type="submit" size="md">
-            {submit_label}
+            {submit_label ?? 'Submit'}
           </Button>
         </div>
       </form>

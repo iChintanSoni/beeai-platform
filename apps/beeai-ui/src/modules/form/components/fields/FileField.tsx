@@ -13,7 +13,7 @@ import { FileCard } from '#modules/files/components/FileCard.tsx';
 import { FileCardsList } from '#modules/files/components/FileCardsList.tsx';
 import { FileUploadProvider } from '#modules/files/contexts/FileUploadProvider.tsx';
 import { useFileUpload } from '#modules/files/contexts/index.ts';
-import type { FileFieldValues } from '#modules/form/types.ts';
+import type { ValuesOfField } from '#modules/form/types.ts';
 import { convertFileToFileFieldValue } from '#modules/form/utils.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
@@ -35,10 +35,10 @@ export function FileFieldComponent({ field }: Props) {
   const { id, label } = field;
 
   const { dropzone, isDisabled, files, removeFile } = useFileUpload();
-  const { control } = useFormContext<FileFieldValues>();
+  const { control } = useFormContext<ValuesOfField<FileField>>();
   const {
     field: { onChange },
-  } = useController({ control, name: id });
+  } = useController({ control, name: `${id}.value` });
 
   const hasFiles = files.length > 0;
 

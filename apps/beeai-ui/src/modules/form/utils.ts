@@ -9,10 +9,10 @@ import type { FormField } from '#api/a2a/extensions/ui/form.ts';
 import { getFilePlatformUrl } from '#api/a2a/utils.ts';
 import type { FileEntity } from '#modules/files/types.ts';
 
-import type { FormValues } from './types';
+import type { RunFormValues } from './types';
 
 export function getDefaultValues(fields: FormField[]) {
-  const defaultValues: FormValues = Object.fromEntries(
+  const defaultValues: RunFormValues = Object.fromEntries(
     fields.map((field) =>
       match(field)
         .with(
@@ -20,9 +20,9 @@ export function getDefaultValues(fields: FormField[]) {
           { type: 'date' },
           { type: 'multiselect' },
           { type: 'checkbox' },
-          ({ id, default_value }) => [id, default_value],
+          ({ id, type, default_value }) => [id, { type, value: default_value }],
         )
-        .otherwise(({ id }) => [id, undefined]),
+        .otherwise(({ id, type }) => [id, { type }]),
     ),
   );
 
@@ -46,4 +46,10 @@ export function convertFileToFileFieldValue(file: FileEntity) {
   };
 
   return value;
+}
+
+export function getNormalizedField(field: FormField) {
+  return {
+    ...field,
+  };
 }

@@ -14,30 +14,30 @@ const URI = 'https://a2a-extensions.beeai.dev/ui/form/v1';
 const baseField = z.object({
   id: z.string().nonempty(),
   label: z.string().nonempty(),
-  required: z.boolean().optional(),
-  col_span: z.number().int().min(1).max(4).optional(),
+  required: z.boolean().nullish(),
+  col_span: z.number().int().min(1).max(4).nullish(),
 });
 
 const textField = baseField.extend({
   type: z.literal('text'),
-  placeholder: z.string().optional(),
-  default_value: z.string().optional(),
+  placeholder: z.string().nullish(),
+  default_value: z.string().nullish(),
 });
 
 const textFieldValue = z.object({
   type: textField.shape.type,
-  value: z.string().optional(),
+  value: z.string().nullish(),
 });
 
 const dateField = baseField.extend({
   type: z.literal('date'),
-  placeholder: z.string().optional(),
-  default_value: z.string().optional(),
+  placeholder: z.string().nullish(),
+  default_value: z.string().nullish(),
 });
 
 const dateFieldValue = z.object({
   type: dateField.shape.type,
-  value: z.string().optional(),
+  value: z.string().nullish(),
 });
 
 const fileField = baseField.extend({
@@ -51,11 +51,11 @@ const fileFieldValue = z.object({
     .array(
       z.object({
         uri: z.string(),
-        name: z.string().optional(),
-        mime_type: z.string().optional(),
+        name: z.string().nullish(),
+        mime_type: z.string().nullish(),
       }),
     )
-    .optional(),
+    .nullish(),
 });
 
 const multiSelectField = baseField.extend({
@@ -68,39 +68,37 @@ const multiSelectField = baseField.extend({
       }),
     )
     .nonempty(),
-  default_value: z.array(z.string()).optional(),
+  default_value: z.array(z.string()).nullish(),
 });
 
 const multiSelectFieldValue = z.object({
   type: multiSelectField.shape.type,
-  value: z.array(z.string()).optional(),
+  value: z.array(z.string()).nullish(),
 });
 
 const checkboxField = baseField.extend({
   type: z.literal('checkbox'),
   content: z.string(),
-  default_value: z.boolean().optional(),
+  default_value: z.boolean().nullish(),
 });
 
 const checkboxFieldValue = z.object({
   type: checkboxField.shape.type,
-  value: z.boolean().optional(),
+  value: z.boolean().nullish(),
 });
 
 const fieldSchema = z.discriminatedUnion('type', [textField, dateField, fileField, multiSelectField, checkboxField]);
 
 const renderSchema = z.object({
-  type: z.literal('render'),
   id: z.string().nonempty(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  columns: z.number().int().min(1).max(4).optional(),
-  submit_label: z.string().optional(),
+  title: z.string().nullish(),
+  description: z.string().nullish(),
+  columns: z.number().int().min(1).max(4).nullish(),
+  submit_label: z.string().nullish(),
   fields: z.array(fieldSchema).nonempty(),
 });
 
 const responseSchema = z.object({
-  type: z.literal('response'),
   id: z.string().nonempty(),
   values: z.record(
     z.discriminatedUnion('type', [
@@ -121,20 +119,15 @@ export type CheckboxField = z.infer<typeof checkboxField>;
 
 export type FormField = z.infer<typeof fieldSchema>;
 
-export type TextFieldValue = z.infer<typeof textFieldValue>;
-export type DateFieldValue = z.infer<typeof dateFieldValue>;
-export type FileFieldValue = z.infer<typeof fileFieldValue>;
-export type MultiSelectFieldValue = z.infer<typeof multiSelectFieldValue>;
-export type CheckboxFieldValue = z.infer<typeof checkboxFieldValue>;
-
 export type FormRender = z.infer<typeof renderSchema>;
 export type FormResponse = z.infer<typeof responseSchema>;
+export type FormResponseValues = FormResponse['values'][string];
 
 export const formMessageExtension: A2AUiExtension<typeof URI, FormRender> = {
   getMessageMetadataSchema: () => z.object({ [URI]: renderSchema }).partial(),
   getUri: () => URI,
 };
-export const formDemandExtension: A2AServiceExtension<typeof URI, z.infer<typeof renderSchema>, FormResponse> = {
+export const formExtension: A2AServiceExtension<typeof URI, z.infer<typeof renderSchema>, FormResponse> = {
   getDemandsSchema: () => renderSchema,
   getFulfillmentSchema: () => responseSchema,
   getUri: () => URI,
@@ -142,7 +135,6 @@ export const formDemandExtension: A2AServiceExtension<typeof URI, z.infer<typeof
 
 // TODO: Temporary for testing purposes
 export const formExtensionRenderExample: FormRender = {
-  type: 'render',
   id: 'form-id',
   title: 'Let’s go on an adventure',
   description: 'Tell me where and whether you are flexible.',
@@ -204,7 +196,6 @@ export const formExtensionRenderExample: FormRender = {
 
 // TODO: Temporary for testing purposes
 export const formExtensionResponseExample: FormResponse = {
-  type: 'response',
   id: 'form-id',
   values: {
     location: {
