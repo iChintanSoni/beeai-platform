@@ -13,6 +13,11 @@ SLASH_LOGIN = "/login"
 router = APIRouter()
 
 
+@router.get("/.well-known/oauth-protected-resource")
+def protected_resource_metadata(auth_servide: AuthServiceDependency):
+    return auth_servide.protected_resource_metadata()
+
+
 @router.get("/login")
 async def login(
     auth_service: AuthServiceDependency,

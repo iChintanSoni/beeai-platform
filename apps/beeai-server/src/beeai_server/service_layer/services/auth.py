@@ -40,6 +40,17 @@ class AuthService:
         )
         return oauth
 
+    def protected_resource_metadata(self) -> dict:
+        resource_id = f"http://localhost:{self._config.port}"
+        providers = self._config.oidc.providers
+        authorization_server = [str(p.issuer) for p in providers if p.issuer is not None]
+
+        return {
+            "resource_id": resource_id,
+            "authorization_servers": authorization_server,
+            "scopes_supported": list(self._config.oidc.scope),
+        }
+
     async def login(self, request: Request, callback_url: str) -> JSONResponse | RedirectResponse:
         if self._oauth is None:
             return JSONResponse({"login_url": None, "passcode": "dev", "token": "beeai-dev-token"})

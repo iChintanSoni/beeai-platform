@@ -85,24 +85,31 @@ class AuthConfiguration(BaseModel):
         return self
 
 
-class OidcConfiguration(BaseModel):
-    passcode_ttl_seconds: int = 3 * 60  # 3 minutes
+class OidcProvider(BaseModel):
+    name: str
+    issuer: AnyUrl
     client_id: str | None = None
-    client_secret: Secret[str] | None = Field(default=None)
-    issuer: AnyUrl | None = None
-    jwks_url: AnyUrl | None = None
+    client_secret: Secret[str] | None = None
+
+
+class OidcConfiguration(BaseModel):
     disable_oidc: bool = False
     admin_emails: list[str] = Field(default_factory=list)
+    providers: list[OidcProvider] = Field(default_factory=list)
+    scope: list[str] = ["openid", "email", "profile"]
 
     @model_validator(mode="after")
     def validate_auth(self):
         if self.disable_oidc:
             logger.critical("Oauth Authentication is disabled! This is suitable only for local development.")
             return self
-        required = ["client_id", "client_secret", "issuer", "jwks_url"]
-        for field in required:
-            if getattr(self, field) is None:
-                raise ValueError(f"{field} is required for Oauth Authentication if Oauth Auth is enabled")
+        if not self.providers:
+            raise ValueError("At least one OIDC provider must be configured if OIDC is enabled")
+        for provider in self.providers:
+            required = ["issuer", "client_id", "client_secret"]
+            for field in required:
+                if getattr(self, field) is None:
+                    raise ValueError(f"'{field}' is required for provider '{provider.name}' if OIDC is enabled")
         return self
 
 

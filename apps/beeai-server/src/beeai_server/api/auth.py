@@ -98,14 +98,23 @@ type JWKS = dict | None
 def setup_jwks(config: Configuration) -> JWKS:
     if config.oidc.disable_oidc:
         return None
-    try:
-        response = requests.get(config.oidc.jwks_url)
-        response.raise_for_status()
-        jwks_dict = response.json()
-        return jwks_dict
-    except Exception as e:
-        logger.error("Failed to fetch JWKS: %s", e)
-        raise
+
+    jwks_dict_by_issuer = {}
+    for provider in config.oidc.providers:
+        issuer = provider.get("issuer")
+        if not issuer:
+            logger.warning(f"Skipping provider with missing issuer: {provider['name']}")
+            continue
+        try:
+            response = requests.get(f"{issuer}/jwks")
+            response.raise_for_status()
+            jwks_dict = response.json()
+            jwks_dict_by_issuer[issuer] = jwks_dict
+            logger.debug(f"Fetched JWKS for issuer {issuer} from {issuer}/jwks")
+        except Exception as e:
+            logger.error(f"Failed to fetch JWKS from {issuer}/jwks : {e}")
+
+    return jwks_dict_by_issuer
 
 
 def extract_oauth_token(
@@ -129,29 +138,52 @@ def extract_oauth_token(
     return cookie_token
 
 
-def decode_oauth_jwt(
-    token: str, jwks: dict | None = None, aud: str | None = None, issuer: str | None = None
-) -> dict | None:
-    jwks = jwks
-    aud = aud
-    # Decode JWT using keys from JWKS
-    for pub_key in jwks.get("keys", []):
-        try:
-            obj_key = jwt.PyJWK(pub_key)
-            # explicitly only check exp and iat, nbf (not before time) is not included in w3id
-            claims = jwt.decode(
-                token, obj_key, algorithms=["RS256"], options=None, verify=True, audience=aud, issuer=issuer
-            )
-            logger.debug("Verified token claims: %s", json.dumps(claims))
-            return claims
-        except jwt.ExpiredSignatureError as err:
-            logger.error("Expired token: %s", err)
-        except jwt.InvalidTokenError as err:
-            logger.debug("Token verification failed: %s", err)
-            continue
+async def introspect_token(token: str, configuration: Configuration) -> tuple[dict, str] | None:
+    """Call OAuth2 introspect endpoint to validate opaque token"""
+    async with httpx.AsyncClient() as client:
+        for provider in configuration.oidc.providers:
+            try:
+                resp = await client.post(
+                    f"{provider['issuer']}/introspect",
+                    auth=(provider["client_id"], provider["client_secret"]),
+                    data={"token": token},
+                )
+                resp.raise_for_status()
+                token_info = resp.json()
+                if token_info.get("active"):
+                    logger.debug(f"Token validated by provider: {provider['issuer']}/introspect")
+                    return token_info, provider["issuer"]
+                else:
+                    logger.debug(f"Token inactive for provider: {provider['issuer']}/introspect")
+            except Exception as e:
+                logger.warning(f"Introspection failed for {provider['issuer']}/introspect: {e}")
+        logger.error("Token introspection failed for all providers")
+        return None
 
-    logger.info("All JWT verifications failed.")
-    return None
+
+async def decode_oauth_jwt_or_introspect(
+    token: str, jwks_dict: dict[str, dict] | None = None, aud: str | None = None, configuration=Configuration
+) -> tuple[dict, str] | None:
+    if jwks_dict:
+        for issuer, jwks in jwks_dict.items():
+            # Decode JWT using keys from JWKS
+            for pub_key in jwks.get("keys", []):
+                try:
+                    obj_key = jwt.PyJWK(pub_key)
+                    # explicitly only check exp and iat, nbf (not before time) is not included in w3id
+                    claims = jwt.decode(
+                        token, obj_key, algorithms=["RS256"], options=None, verify=True, audience=aud, issuer=issuer
+                    )
+                    logger.debug("Verified token claims: %s", json.dumps(claims))
+                    return claims, issuer
+                except jwt.ExpiredSignatureError as err:
+                    logger.error("Expired token: %s", err)
+                except jwt.InvalidTokenError as err:
+                    logger.debug("Token verification failed: %s", err)
+                    continue
+
+    logger.info("JWT decoding failed or no JWKS, trying introspection on all providers")
+    return await introspect_token(token=token, configuration=configuration)
 
 
 async def fetch_user_info(token: str, userinfo_endpoint: str) -> dict:

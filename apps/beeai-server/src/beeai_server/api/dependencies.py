@@ -14,7 +14,7 @@ from pydantic import ConfigDict
 from beeai_server.api.auth import (
     JWKS,
     ROLE_PERMISSIONS,
-    decode_oauth_jwt,
+    decode_oauth_jwt_or_introspect,
     extract_oauth_token,
     fetch_user_info,
     verify_internal_jwt,
@@ -68,13 +68,18 @@ async def authenticate_oauth_user(
             detail=f"Invalid Authorization header: {e}",
         ) from e
 
-    claims = decode_oauth_jwt(token, jwks=di[JWKS], aud="beeai-server", issuer=f"{configuration.oidc.issuer}")
+    claims, issuer = await decode_oauth_jwt_or_introspect(
+        token, jwks=di[JWKS], aud="beeai-server", issuer=f"{configuration.oidc.issuer}", configuration=configuration
+    )
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     email = claims.get("email")
     if not email:
-        userinfo = await fetch_user_info(token, f"{configuration.oidc.issuer}/userinfo")
+        provider = next((p for p in configuration.oidc.providers if p["issuer"] == issuer), None)
+        if not provider:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="issuer not configured")
+        userinfo = await fetch_user_info(token, f"{provider['issuer']}/userinfo")
         email = userinfo.get("email")
 
     if not email:
