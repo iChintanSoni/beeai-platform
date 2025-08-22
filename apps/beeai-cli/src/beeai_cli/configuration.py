@@ -3,6 +3,7 @@
 
 import functools
 import importlib.metadata
+import json
 import pathlib
 import re
 from collections.abc import AsyncIterator
@@ -36,6 +37,7 @@ class Configuration(pydantic_settings.BaseSettings):
     admin_password: SecretStr | None = None
     oidc_enabled: bool = False
     auth_token: SecretStr | None = None
+    resource_metadata_ttl: int = 86400
 
     @property
     def lima_home(self) -> pathlib.Path:
@@ -43,30 +45,48 @@ class Configuration(pydantic_settings.BaseSettings):
 
     @property
     def token_file(self) -> pathlib.Path:
+        """Return token file path"""
         return self.home / "token.json"
 
     @property
-    def load_auth_token(self) -> SecretStr | None:
-        if self.auth_token:
-            return self.auth_token
+    def resource_metadata_file(self) -> pathlib.Path:
+        return self.home / "resource_metadata.json"
 
+    @property
+    def load_auth_token(self) -> SecretStr | None:
         if self.token_file.exists():
-            token = self.token_file.read_text().strip()
-            if token:
-                self.auth_token = SecretStr(token)
-                return self.auth_token
+            try:
+                data = json.loads(self.token_file.read_text())
+                access_token = data.get("access_token")
+                if access_token:
+                    return SecretStr(access_token)
+            except json.JSONDecodeError:
+                # Fallback if file only has raw token
+                token = self.token_file.read_text().strip()
+                if token:
+                    return SecretStr(token)
         return None
 
-    def set_auth_token(self, token: str):
-        """Persist and cache auth token (after login)."""
-        self.home.mkdir(parents=True, exist_ok=True)
-        self.token_file.write_text(token)
-        self.auth_token = SecretStr(token)
+    def set_auth_token(self, tokens: dict):
+        """Persist and cache full Oauth token (after login)."""
+        if isinstance(tokens, dict):
+            if "access_token" not in tokens:
+                raise ValueError("Token dict must contain 'access_token'")
+            # Save full JSON response
+            self.token_file.write_text(json.dumps(tokens, indent=2))
+        elif isinstance(tokens, str):
+            # Save raw token string
+            # Save raw token string
+            token = tokens.strip()
+            if not token:
+                raise ValueError("Empty token string is not allowed")
+            self.token_file.write_text(token)
+        else:
+            raise TypeError(f"Unsupported token type: {type(tokens)}")
 
     def clear_auth_token(self):
-        """Remove persisted token and clear from memory."""
-        self.auth_token = None
-        if self.token_file.exists():
+        """Remove persisted token"""
+        if self.token_file.exists:
             self.token_file.unlink()
 
     @asynccontextmanager
