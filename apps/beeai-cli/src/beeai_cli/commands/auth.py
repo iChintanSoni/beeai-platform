@@ -47,11 +47,12 @@ def generate_pkce_pair():
 
 
 @app.command("login")
-async def cli_login():
-    # metadata = await get_resource_metadata(resource_url=resource_url)
+async def cli_login(resource_url: str):
+    metadata = await get_resource_metadata(resource_url=resource_url)
 
-    # as_config = metadata["authorization_servers"][0]
-    # issuer = as_config["issuer"]
+    # TODO: Choose from the list
+    as_config = metadata["authorization_servers"][0]
+    issuer = as_config["issuer"]
 
     issuer = "https://sox.verify.ibm.com/oidc/endpoint/default"
 

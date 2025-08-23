@@ -16,7 +16,7 @@ class AuthService:
         self._config = configuration
 
     def protected_resource_metadata(self) -> dict:
-        resource_id = f"http://localhost:{self._config.port}"
+        resource_id = f"http://localhost:{self._config.port}"  # TODO
         providers = self._config.oidc.providers
         authorization_server = [str(p.issuer) for p in providers if p.issuer is not None]
 

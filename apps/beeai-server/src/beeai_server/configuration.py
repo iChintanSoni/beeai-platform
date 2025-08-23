@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import json
 import logging
+import os
 from collections import defaultdict
 from datetime import timedelta
 from functools import cache
@@ -88,8 +90,8 @@ class AuthConfiguration(BaseModel):
 class OidcProvider(BaseModel):
     name: str
     issuer: AnyUrl
-    client_id: str | None = None
-    client_secret: Secret[str] | None = None
+    client_id: str
+    client_secret: Secret[str]
 
 
 class OidcConfiguration(BaseModel):
@@ -97,6 +99,19 @@ class OidcConfiguration(BaseModel):
     admin_emails: list[str] = Field(default_factory=list)
     providers: list[OidcProvider] = Field(default_factory=list)
     scope: list[str] = ["openid", "email", "profile"]
+
+    @model_validator(mode="before")
+    def parse_providers(self, values: dict) -> dict:
+        providers_string = os.environ.get("OIDC__PROVIDERS")
+        if providers_string:
+            try:
+                providers_data = json.loads(providers_string)
+                for p in providers_data:
+                    p["client_secret"] = Secret(p["client_secret"])
+                values["providers"] = providers_data
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid OIDC__PROVIDERS JSON: {e}") from e
+        return values
 
     @model_validator(mode="after")
     def validate_auth(self):
@@ -108,7 +123,7 @@ class OidcConfiguration(BaseModel):
         for provider in self.providers:
             required = ["issuer", "client_id", "client_secret"]
             for field in required:
-                if getattr(self, field) is None:
+                if getattr(provider, field) is None:
                     raise ValueError(f"'{field}' is required for provider '{provider.name}' if OIDC is enabled")
         return self
 

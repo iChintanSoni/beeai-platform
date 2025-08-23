@@ -101,9 +101,9 @@ def setup_jwks(config: Configuration) -> JWKS:
 
     jwks_dict_by_issuer = {}
     for provider in config.oidc.providers:
-        issuer = provider.get("issuer")
+        issuer = provider.issuer
         if not issuer:
-            logger.warning(f"Skipping provider with missing issuer: {provider['name']}")
+            logger.warning(f"Skipping provider with missing issuer: {provider.name}")
             continue
         try:
             response = requests.get(f"{issuer}/jwks")
@@ -145,18 +145,18 @@ async def introspect_token(token: str, configuration: Configuration) -> tuple[di
             try:
                 resp = await client.post(
                     f"{provider['issuer']}/introspect",
-                    auth=(provider["client_id"], provider["client_secret"]),
+                    auth=(provider.client_id, provider.client_secret),
                     data={"token": token},
                 )
                 resp.raise_for_status()
                 token_info = resp.json()
                 if token_info.get("active"):
-                    logger.debug(f"Token validated by provider: {provider['issuer']}/introspect")
-                    return token_info, provider["issuer"]
+                    logger.debug(f"Token validated by provider: {provider.issuer}/introspect")
+                    return token_info, provider.issuer
                 else:
-                    logger.debug(f"Token inactive for provider: {provider['issuer']}/introspect")
+                    logger.debug(f"Token inactive for provider: {provider.issuer}/introspect")
             except Exception as e:
-                logger.warning(f"Introspection failed for {provider['issuer']}/introspect: {e}")
+                logger.warning(f"Introspection failed for {provider.issuer}/introspect: {e}")
         logger.error("Token introspection failed for all providers")
         return None
 
