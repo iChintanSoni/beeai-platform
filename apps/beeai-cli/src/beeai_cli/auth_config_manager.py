@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import SecretStr
 
+from beeai_cli.utils import make_safe_name
+
 
 class AuthConfigManager:
     def __init__(self, config_path: pathlib.Path):
@@ -24,12 +26,14 @@ class AuthConfigManager:
             json.dump(self.config, f, indent=2)
 
     def set_active_resource(self, resource: str) -> None:
+        resource = make_safe_name(resource)
         if resource not in self.config["resources"]:
             raise ValueError(f"Resource {resource} not found")
         self.config["active_resource"] = resource
         self._save()
 
     def set_active_token(self, resource: str, auth_server: str) -> None:
+        resource = make_safe_name(resource)
         if resource not in self.config["resources"]:
             raise ValueError(f"Resource {resource} not found")
         if auth_server not in self.config["resources"][resource]["authorization_servers"]:
@@ -38,6 +42,7 @@ class AuthConfigManager:
         self._save()
 
     def save_auth_token(self, resource: str, auth_server: str, token: dict[str, Any]) -> None:
+        resource = make_safe_name(resource)
         resources = self.config["resources"]
         if resource not in resources:
             resources[resource] = {"authorization_servers": {}, "active_token": None}

@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse
 
 from beeai_cli.async_typer import AsyncTyper, console
 from beeai_cli.configuration import Configuration
+from beeai_cli.utils import make_safe_name
 
 app = AsyncTyper()
 
@@ -24,7 +25,7 @@ config = Configuration()
 
 
 async def get_resource_metadata(resource_url: str, force_refresh=False):
-    safe_name = resource_url.replace("://", "_").replace("/", "_")
+    safe_name = make_safe_name(resource_url)
     metadata_file = config.resource_metadata_dir / f"{safe_name}_metadata.json"
 
     if not force_refresh and metadata_file.exists():
