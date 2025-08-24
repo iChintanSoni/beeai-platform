@@ -3,7 +3,6 @@
 
 import functools
 import importlib.metadata
-import json
 import pathlib
 import re
 from collections.abc import AsyncIterator
@@ -13,6 +12,8 @@ import pydantic
 import pydantic_settings
 from beeai_sdk.platform import PlatformClient, use_platform_client
 from pydantic import HttpUrl, SecretStr
+
+from beeai_cli.auth_config_manager import AuthConfigManager
 
 
 @functools.cache
@@ -36,7 +37,6 @@ class Configuration(pydantic_settings.BaseSettings):
     )
     admin_password: SecretStr | None = None
     oidc_enabled: bool = False
-    auth_token: SecretStr | None = None
     resource_metadata_ttl: int = 86400
     client_id: str = "0004ec72-bb41-49d0-804d-430167e5a148"  # pre-registered with AS
     redirect_uri: pydantic.AnyUrl = HttpUrl("http://localhost:9001/callback")
@@ -46,56 +46,25 @@ class Configuration(pydantic_settings.BaseSettings):
         return self.home / "lima"
 
     @property
-    def token_file(self) -> pathlib.Path:
-        """Return token file path"""
-        return self.home / "token.json"
+    def auth_config_file(self) -> pathlib.Path:
+        """Return auth config file path"""
+        return self.home / "auth_config.json"
 
     @property
     def resource_metadata_dir(self) -> pathlib.Path:
+        """Return resource metadata directory path"""
         path = self.home / "resource_metadata"
         path.mkdir(parents=True, exist_ok=True)
         return path
 
     @property
-    def load_auth_token(self) -> SecretStr | None:
-        if self.token_file.exists():
-            try:
-                data = json.loads(self.token_file.read_text())
-                access_token = data.get("access_token")
-                if access_token:
-                    return SecretStr(access_token)
-            except json.JSONDecodeError:
-                # Fallback if file only has raw token
-                token = self.token_file.read_text().strip()
-                if token:
-                    return SecretStr(token)
-        return None
-
-    def set_auth_token(self, tokens: dict):
-        """Persist and cache full Oauth token (after login)."""
-        if isinstance(tokens, dict):
-            if "access_token" not in tokens:
-                raise ValueError("Token dict must contain 'access_token'")
-            # Save full JSON response
-            self.token_file.write_text(json.dumps(tokens, indent=2))
-        elif isinstance(tokens, str):
-            # Save raw token string
-            # Save raw token string
-            token = tokens.strip()
-            if not token:
-                raise ValueError("Empty token string is not allowed")
-            self.token_file.write_text(token)
-        else:
-            raise TypeError(f"Unsupported token type: {type(tokens)}")
-
-    def clear_auth_token(self):
-        """Remove persisted token"""
-        if self.token_file.exists:
-            self.token_file.unlink()
+    def auth_manager(self) -> AuthConfigManager:
+        return AuthConfigManager(self.auth_config_file)
 
     @asynccontextmanager
     async def use_platform_client(self) -> AsyncIterator[PlatformClient]:
         auth = ("admin", self.admin_password.get_secret_value()) if self.admin_password else None
-        auth_token = self.load_auth_token.get_secret_value() if self.load_auth_token else None
+        token = self.auth_manager.load_auth_token()
+        auth_token = token.get_secret_value() if token else None
         async with use_platform_client(auth=auth, auth_token=auth_token, base_url=str(self.host)) as client:
             yield client

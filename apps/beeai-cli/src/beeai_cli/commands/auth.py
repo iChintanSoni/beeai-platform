@@ -150,11 +150,15 @@ async def cli_login(resource_url: str):
     oidc = await discover_oidc_config(issuer)
     code_verifier, code_challenge = generate_pkce_pair()
 
+    requested_scopes = metadata.get("scopes_supported", [])
+    if not requested_scopes:
+        requested_scopes = ["openid"]  # default fallback
+
     auth_params = {
         "client_id": config.client_id,
         "response_type": "code",
         "redirect_uri": config.redirect_uri,
-        "scope": metadata.get("scopes_supported"),
+        "scope": " ".join(requested_scopes),
         "code_challenge": code_challenge,
         "code_challenge_method": "S256",
     }
@@ -167,7 +171,7 @@ async def cli_login(resource_url: str):
     tokens = await exchange_token(oidc, code, code_verifier, config)
 
     if tokens:
-        config.set_auth_token(tokens)
+        config.auth_manager.save_auth_token(resource_url, issuer, tokens)
         console.print("\n[bold green]Ok! Login successful.[/bold green]")
         return
 
@@ -177,7 +181,7 @@ async def cli_login(resource_url: str):
 
 @app.command("logout")
 async def logout():
-    config.clear_auth_token()
+    config.auth_manager.clear_auth_token()
 
     if config.resource_metadata_dir.exists():
         for metadata_file in config.resource_metadata_dir.glob("*_metadata.json"):
