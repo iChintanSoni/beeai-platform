@@ -101,7 +101,8 @@ class OidcConfiguration(BaseModel):
     scope: list[str] = ["openid", "email", "profile"]
 
     @model_validator(mode="before")
-    def parse_providers(self, values: dict) -> dict:
+    @classmethod
+    def parse_providers(cls, values: dict) -> dict:
         providers_string = os.environ.get("OIDC__PROVIDERS")
         if providers_string:
             try:

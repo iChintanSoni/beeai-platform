@@ -38,6 +38,8 @@ class Configuration(pydantic_settings.BaseSettings):
     oidc_enabled: bool = False
     auth_token: SecretStr | None = None
     resource_metadata_ttl: int = 86400
+    client_id: str = "0004ec72-bb41-49d0-804d-430167e5a148"  # pre-registered with AS
+    redirect_uri: pydantic.AnyUrl = HttpUrl("http://localhost:9001/callback")
 
     @property
     def lima_home(self) -> pathlib.Path:
@@ -49,8 +51,10 @@ class Configuration(pydantic_settings.BaseSettings):
         return self.home / "token.json"
 
     @property
-    def resource_metadata_file(self) -> pathlib.Path:
-        return self.home / "resource_metadata.json"
+    def resource_metadata_dir(self) -> pathlib.Path:
+        path = self.home / "resource_metadata"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
     @property
     def load_auth_token(self) -> SecretStr | None:
