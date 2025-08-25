@@ -131,7 +131,7 @@ async def exchange_token(oidc: dict, code: str, code_verifier: str, config) -> d
 @app.command("login")
 async def cli_login(resource_url: str | None = None):
     if not resource_url:
-        entered = input(f"Enter the resource url (default: {config.host}):").strip()
+        entered = input(f"Enter the server url (default: {config.host}):").strip()
         resource_url = entered or str(config.host)
 
     metadata = await get_resource_metadata(resource_url=resource_url)
