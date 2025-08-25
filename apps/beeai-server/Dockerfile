@@ -2,7 +2,6 @@ FROM python:3.13-alpine3.21 AS builder
 ENV UV_COMPILE_BYTECODE=1 \
     HOME="/tmp" \
     AGENT_REGISTRY__LOCATIONS__FILE="file:///app/registry.yaml"
-RUN mkdir /jwks && chmod og+rx /root
 RUN --mount=type=cache,target=/tmp/.cache/uv \
     --mount=type=bind,source=dist/requirements.txt,target=/requirements.txt \
     --mount=type=bind,from=ghcr.io/astral-sh/uv:0.8.9,source=/uv,target=/bin/uv \
