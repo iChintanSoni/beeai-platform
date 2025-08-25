@@ -92,10 +92,10 @@ def verify_internal_jwt(token: str, configuration: Configuration) -> ParsedToken
     )
 
 
-type JWKS = dict | None
+type JWKS_DICT = dict | None
 
 
-def setup_jwks(config: Configuration) -> JWKS:
+def setup_jwks(config: Configuration) -> JWKS_DICT:
     if config.oidc.disable_oidc:
         return None
 
@@ -144,8 +144,8 @@ async def introspect_token(token: str, configuration: Configuration) -> tuple[di
         for provider in configuration.oidc.providers:
             try:
                 resp = await client.post(
-                    f"{provider['issuer']}/introspect",
-                    auth=(provider.client_id, provider.client_secret),
+                    f"{provider.issuer}/introspect",
+                    auth=(provider.client_id, provider.client_secret.get_secret_value()),
                     data={"token": token},
                 )
                 resp.raise_for_status()
