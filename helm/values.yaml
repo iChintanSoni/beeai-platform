@@ -198,7 +198,7 @@ ui:
   volumes:
     - name: providers
       secret:
-        secretName: oidc-providers
+        secretName: beeai-oidc-providers
 
 phoenix:
   # **Important License Notice**: Phoenix is disabled by default in BeeAI. When you enable Phoenix,
