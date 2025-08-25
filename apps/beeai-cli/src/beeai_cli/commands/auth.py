@@ -33,7 +33,7 @@ async def get_resource_metadata(resource_url: str, force_refresh=False):
         if data.get("expiry", 0) > time.time():
             return data["metadata"]
 
-    url = f"{resource_url}/.well-known/oauth-protected-resource"
+    url = f"{resource_url}api/v1/.well-known/oauth-protected-resource"
     async with httpx.AsyncClient() as client:
         resp = await client.get(url)
         resp.raise_for_status()
@@ -129,7 +129,11 @@ async def exchange_token(oidc: dict, code: str, code_verifier: str, config) -> d
 
 
 @app.command("login")
-async def cli_login(resource_url: str):
+async def cli_login(resource_url: str | None = None):
+    if not resource_url:
+        entered = input(f"Enter the resource url (default: {config.host}):").strip()
+        resource_url = entered or str(config.host)
+
     metadata = await get_resource_metadata(resource_url=resource_url)
     auth_servers = metadata.get("authorization_servers", [])
 
