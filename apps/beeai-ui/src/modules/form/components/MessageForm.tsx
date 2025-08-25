@@ -25,6 +25,7 @@ export function MessageForm({ message }: Props) {
   return (
     <FormRenderer
       definition={formPart}
+      showHeading={false}
       onSubmit={(values: RunFormValues) => {
         run({ formValues: values });
       }}

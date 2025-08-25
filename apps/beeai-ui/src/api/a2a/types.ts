@@ -10,15 +10,24 @@ import type { LLMDemand, LLMFulfillment } from './extensions/services/llm';
 import type { MCPDemand, MCPFulfillment } from './extensions/services/mcp';
 import type { FormRender, FormResponse } from './extensions/ui/form';
 
-export enum UnfinishedTaskResult {
+export enum RunResultType {
   FormRequired = 'form-required',
+  Parts = 'parts',
 }
 
-export interface FormRequired {
+export interface FormRequiredResult {
+  type: RunResultType.FormRequired;
   taskId: TaskId;
-  type: UnfinishedTaskResult.FormRequired;
   form: FormRender;
 }
+
+export interface PartsResult<UIGenericPart = never> {
+  type: RunResultType.Parts;
+  taskId: TaskId;
+  parts: Array<UIMessagePart | UIGenericPart>;
+}
+
+export type ChatResult<UIGenericPart = never> = PartsResult<UIGenericPart> | FormRequiredResult;
 
 export interface ChatParams {
   message: UIUserMessage;
@@ -29,7 +38,7 @@ export interface ChatParams {
 }
 
 export interface ChatRun<UIGenericPart = never> {
-  done: Promise<null | FormRequired>;
+  done: Promise<null | FormRequiredResult>;
   subscribe: (fn: (data: { parts: (UIMessagePart | UIGenericPart)[]; taskId: TaskId }) => void) => () => void;
   cancel: () => Promise<void>;
 }

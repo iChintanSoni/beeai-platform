@@ -104,6 +104,7 @@ export enum UIMessagePartKind {
 export enum UIMessageStatus {
   InProgress = 'in-progress',
   Completed = 'completed',
+  InputRequired = 'input-required',
   Aborted = 'aborted',
   Failed = 'failed',
 }

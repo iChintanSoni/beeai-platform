@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from typing import Annotated
+
 
 import a2a.server.agent_execution
 import a2a.server.apps
@@ -11,17 +13,14 @@ import a2a.server.tasks
 from a2a.types import (
     Message,
 )
+
 from a2a.utils.message import get_message_text
 
 from beeai_sdk.server import Server
 from beeai_sdk.server.context import RunContext
 
-
 import beeai_sdk.a2a.extensions
-from beeai_sdk.a2a.extensions.services.llm import LLMServiceExtensionServer
-from beeai_sdk.a2a.extensions.ui.form import DateField
-
-from beeai_sdk.a2a.extensions.ui.trajectory import TrajectoryExtensionServer, TrajectoryExtensionSpec
+from beeai_sdk.a2a.extensions.ui.form import DateField, TextField, FileField, CheckboxField, MultiSelectField,OptionItem, FormExtensionServer, FormExtensionSpec, FormRender
 
 agent_detail_extension_spec = beeai_sdk.a2a.extensions.AgentDetailExtensionSpec(
     params=beeai_sdk.a2a.extensions.AgentDetail(
@@ -29,24 +28,50 @@ agent_detail_extension_spec = beeai_sdk.a2a.extensions.AgentDetailExtensionSpec(
     )
 )
 
+location=TextField(
+    type="text",
+    id="location",
+    label="Location",
+    required=True,
+    col_span=2
+)
 date_from=DateField(
     type="date",
     id="date",
     label="Date from",
     required=True,
+    col_span=1
 )
 date_to=DateField(
     type="date",
     id="date_to",
     label="Date to",
     required=True,
+    col_span=1
+)
+flexible=CheckboxField(
+    type="checkbox",
+    id="flexible",
+    label="Do you have flexibility with your travel dates?",
+    content="Yes, I'm flexible",
+    required=False,
+    col_span=2
+)
+interests=MultiSelectField(
+    type="multiselect",
+    id="interests",
+    label="Interests",
+    required=False,
+    col_span=2,
+    options=[OptionItem(id="cuisine",label="Cuisine"),OptionItem(id="nature",label="Nature"),OptionItem(id="photography",label="Photography")]
 )
 
 form_extension_spec = beeai_sdk.a2a.extensions.FormExtensionSpec(
     params=beeai_sdk.a2a.extensions.FormRender(
-        id="xxx",
-        title="Text form",
-        fields=[date_from, date_to]
+        id="adventure_form",
+        title="Let’s go on an adventure",
+        columns=2,
+        fields=[location, flexible, interests]
     )
 )
 
@@ -78,15 +103,20 @@ server = Server()
     ],
 )
 
-async def agent(input: Message, context: RunContext,
+async def agent(
+  input: Message,
+  form: Annotated[
+        FormExtensionServer,
+        form_extension_spec,
+    ],
 ):
-    """
-    The agent is an AI-powered conversational system with memory, supporting real-time search, Wikipedia lookups,
-    and weather updates through integrated tools.
-    """
+    """Request form data"""
     
-    hello_template: str = os.getenv("HELLO_TEMPLATE", "Ciao %s!")
-    yield a2a.types.AgentMessage(text=hello_template % get_message_text(input))
+    print(input)
+    form_data = await form.parse_form_response(message=input)
+    
+    yield f"Hello {form_data.values['location'].value}"
+
 
 def serve():
     server.run(

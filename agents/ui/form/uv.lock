@@ -343,9 +343,9 @@ wheels = [
 ]
 
 [[package]]
-name = "form-agent"
+name = "form"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "beeai-framework", extra = ["duckduckgo", "wikipedia"] },
     { name = "beeai-sdk" },

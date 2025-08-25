@@ -8,7 +8,7 @@ import { type PropsWithChildren, useCallback, useMemo, useRef, useState } from '
 import { v4 as uuid } from 'uuid';
 
 import { buildA2AClient } from '#api/a2a/client.ts';
-import { type ChatRun, UnfinishedTaskResult } from '#api/a2a/types.ts';
+import { type ChatRun, RunResultType } from '#api/a2a/types.ts';
 import { createTextPart } from '#api/a2a/utils.ts';
 import { getErrorCode } from '#api/utils.ts';
 import { useHandleError } from '#hooks/useHandleError.ts';
@@ -184,9 +184,9 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
         });
 
         const result = await run.done;
-        if (result && result.type === UnfinishedTaskResult.FormRequired) {
+        if (result && result.type === RunResultType.FormRequired) {
           updateLastAgentMessage((message) => {
-            message.status = UIMessageStatus.Completed;
+            message.status = UIMessageStatus.InputRequired;
             message.parts.push({ kind: UIMessagePartKind.Form, ...result.form });
           });
 

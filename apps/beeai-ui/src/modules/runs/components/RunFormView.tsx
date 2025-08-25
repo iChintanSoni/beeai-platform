@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function RunFormView({ formRender }: Props) {
-  const { agent } = useAgentRun();
+  const { agent, run } = useAgentRun();
 
   if (!formRender) {
     return false;
@@ -27,9 +27,9 @@ export function RunFormView({ formRender }: Props) {
       <FormRenderer
         definition={formRender}
         onSubmit={(values: RunFormValues) => {
-          console.log(values);
+          run({ formValues: values });
         }}
-        defaultTitle={agent.ui.user_greeting}
+        defaultHeading={agent.ui.user_greeting}
       />
     </Container>
   );

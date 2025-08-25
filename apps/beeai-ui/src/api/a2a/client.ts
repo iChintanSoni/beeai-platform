@@ -23,7 +23,8 @@ import {
   fulfillServiceExtensionDemand,
 } from './extensions/utils';
 import { processMessageMetadata, processParts } from './part-processors';
-import { type ChatParams, type ChatRun, type FormRequired, UnfinishedTaskResult } from './types';
+import type { ChatResult, FormRequiredResult } from './types';
+import { type ChatParams, type ChatRun, RunResultType } from './types';
 import { createUserMessage, extractTextFromMessage } from './utils';
 
 const mcpExtensionExtractor = extractServiceExtensionDemands(mcpExtension);
@@ -84,13 +85,8 @@ export const buildA2AClient = <UIGenericPart = never>({
     ...(typeof window !== 'undefined' && { fetchImpl: window.fetch.bind(window) }),
   });
 
-  type PartsChatResult = 'parts';
-  type ChatResult =
-    | { type: PartsChatResult; parts: Array<UIMessagePart | UIGenericPart>; taskId: TaskId }
-    | FormRequired;
-
   const chat = ({ message, contextId, fulfillments, taskId: initialTaskId, formResponse }: ChatParams) => {
-    const messageSubject = new Subject<ChatResult>();
+    const messageSubject = new Subject<ChatResult<UIGenericPart>>();
 
     let taskId: TaskId | undefined = initialTaskId;
 
@@ -118,7 +114,7 @@ export const buildA2AClient = <UIGenericPart = never>({
 
       const taskResult = lastValueFrom(
         messageSubject.asObservable().pipe(
-          filter((result: ChatResult): result is FormRequired => result.type === UnfinishedTaskResult.FormRequired),
+          filter((result: ChatResult): result is FormRequiredResult => result.type === RunResultType.FormRequired),
           defaultIfEmpty(null),
         ),
       );
@@ -134,7 +130,7 @@ export const buildA2AClient = <UIGenericPart = never>({
               const form = extractForm(event.status.message?.metadata);
               if (form) {
                 messageSubject.next({
-                  type: UnfinishedTaskResult.FormRequired,
+                  type: RunResultType.FormRequired,
                   taskId,
                   form,
                 });
@@ -145,14 +141,14 @@ export const buildA2AClient = <UIGenericPart = never>({
 
             const parts: (UIMessagePart | UIGenericPart)[] = handleStatusUpdate(event, onStatusUpdate);
 
-            messageSubject.next({ type: 'parts', parts, taskId });
+            messageSubject.next({ type: RunResultType.Parts, parts, taskId });
           })
           .with({ kind: 'artifact-update' }, (event) => {
             taskId = event.taskId;
 
             const parts = handleArtifactUpdate(event);
 
-            messageSubject.next({ type: 'parts', parts, taskId });
+            messageSubject.next({ type: RunResultType.Parts, parts, taskId });
           });
       }
 
@@ -168,7 +164,9 @@ export const buildA2AClient = <UIGenericPart = never>({
           .asObservable()
           .pipe(
             filter(
-              (result): result is { type: 'parts'; parts: Array<UIMessagePart | UIGenericPart>; taskId: TaskId } =>
+              (
+                result,
+              ): result is { type: RunResultType.Parts; parts: Array<UIMessagePart | UIGenericPart>; taskId: TaskId } =>
                 result.type === 'parts',
             ),
           )

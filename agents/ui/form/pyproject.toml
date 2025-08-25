@@ -1,5 +1,5 @@
 [project]
-name = "form-agent"
+name = "form"
 version = "0.1.0"
 description = "Agent with structured input."
 authors = [
@@ -23,6 +23,12 @@ beeai-sdk = { path = "../../../apps/beeai-sdk", editable = true }
 
 [project.scripts]
 server = "form.agent:serve"
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
 
 [tool.pyright]
 venvPath = "."

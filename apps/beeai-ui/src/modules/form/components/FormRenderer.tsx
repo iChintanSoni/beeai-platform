@@ -16,23 +16,24 @@ import classes from './FormRenderer.module.scss';
 
 interface Props {
   definition: FormRender;
-  defaultTitle?: string;
+  defaultHeading?: string;
+  showHeading?: boolean;
   onSubmit: (values: RunFormValues) => void;
 }
 
-export function FormRenderer({ definition, defaultTitle, onSubmit }: Props) {
+export function FormRenderer({ definition, defaultHeading, showHeading = true, onSubmit }: Props) {
   const { id, title, description, columns, submit_label, fields } = definition;
 
   const defaultValues = getDefaultValues(fields);
 
   const form = useForm<RunFormValues>({ defaultValues });
 
-  const heading = title ?? defaultTitle;
+  const heading = title ?? defaultHeading;
 
   return (
     <FormProvider {...form}>
       <form id={id} className={classes.root} onSubmit={form.handleSubmit(onSubmit)}>
-        {heading && <h2 className={classes.heading}>{heading}</h2>}
+        {showHeading && heading && <h2 className={classes.heading}>{heading}</h2>}
 
         {description && <p>{description}</p>}
 
