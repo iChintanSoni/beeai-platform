@@ -38,6 +38,7 @@ declare module 'next-auth' {
    */
   interface Session {
     id_token: string & DefaultSession['user'];
+    access_token?: string;
   }
 }
 
@@ -48,6 +49,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     /** OpenID ID Token */
     id_token?: string;
+    access_token?: string;
   }
 }
 // The providers come from a secret "oidc-providers" whos data is JSON and mounted in fs and loaded via import as json
@@ -122,12 +124,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   jwt: {
     async encode(params: JWTEncodeParams<JWT>): Promise<string> {
       // return a custom encoded JWT string
-      return params?.token?.['id_token'] || '';
+      return params?.token?.['access_token'] || '';
     },
     async decode(params: JWTDecodeParams): Promise<JWT | null> {
       // return a `JWT` object, or `null` if decoding failed
-      // likely need to base64 decode the id_token and extract the
-      const jwt = { id_token: params.token || '' };
+      const jwt = { access_token: params.token || '' };
       return jwt;
     },
   },
@@ -162,10 +163,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session['id_token'] = token['id_token'];
           }
         }
+        if (token['access_token']) {
+          session['access_token'] = token['access_token'];
+        }
       }
       // pull the id token out of the account on signIn
       if (account) {
         token['id_token'] = account.id_token;
+        token['access_token'] = account.access_token;
       }
       return token;
     },
