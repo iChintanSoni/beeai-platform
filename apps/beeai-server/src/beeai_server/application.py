@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-import secrets
 from collections.abc import Iterable
 from contextlib import asynccontextmanager
 
@@ -12,8 +11,6 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import ORJSONResponse
 from kink import Container, di, inject
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
-from starlette.middleware import Middleware
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -40,8 +37,6 @@ from beeai_server.service_layer.services.mcp import McpService
 from beeai_server.telemetry import INSTRUMENTATION_NAME, shutdown_telemetry
 
 logger = logging.getLogger(__name__)
-SESSION_KEY = secrets.token_hex(16)
-middleware = [Middleware(SessionMiddleware, secret_key=SESSION_KEY, https_only=True, session_cookie="session")]
 
 
 def extract_messages(exc):
@@ -154,7 +149,6 @@ def app(*, dependency_overrides: Container | None = None) -> FastAPI:
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
         servers=[{"url": f"http://localhost:{configuration.port}"}],
-        middleware=middleware,
     )
 
     logger.info("Mounting routes...")

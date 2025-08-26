@@ -1,8 +1,6 @@
 # Copyright 2025 © BeeAI a Series of LF Projects, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
-import hashlib
 import json
 import secrets
 import time
@@ -12,6 +10,7 @@ from urllib.parse import urlencode
 import anyio
 import httpx
 import uvicorn
+from authlib.oauth2.rfc7636 import create_s256_code_challenge
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
@@ -45,9 +44,8 @@ async def get_resource_metadata(resource_url: str, force_refresh=False):
 
 
 def generate_pkce_pair():
-    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode()
-    challenge = hashlib.sha256(code_verifier.encode()).digest()
-    code_challenge = base64.urlsafe_b64encode(challenge).rstrip(b"=").decode()
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = create_s256_code_challenge(code_verifier)
     return code_verifier, code_challenge
 
 
