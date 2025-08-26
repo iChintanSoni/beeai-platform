@@ -27,7 +27,11 @@ export function RunFormView({ formRender }: Props) {
       <FormRenderer
         definition={formRender}
         onSubmit={(values: RunFormValues) => {
-          run({ formValues: values });
+          const form = {
+            request: formRender,
+            response: { id: formRender.id, values },
+          };
+          run({ form });
         }}
         defaultHeading={agent.ui.user_greeting}
       />

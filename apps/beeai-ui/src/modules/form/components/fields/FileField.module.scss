@@ -11,6 +11,6 @@
 
 .files {
   > li {
-    max-inline-size: calc(50% - #{$spacing-04 / 2});
+    max-inline-size: calc(50% - #{math.div($spacing-04, 2)});
   }
 }

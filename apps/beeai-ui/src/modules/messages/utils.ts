@@ -84,11 +84,16 @@ export function checkMessageStatus(message: UIAgentMessage) {
 }
 
 export function checkMessageContent(message: UIMessage) {
-  const hasContent = message.parts.some(
-    ({ kind }) => kind === UIMessagePartKind.Text || kind === UIMessagePartKind.Transform,
+  const hasContent = Boolean(
+    message.parts.some(({ kind }) => kind === UIMessagePartKind.Text || kind === UIMessagePartKind.Transform) ||
+      checkMessageForm(message),
   );
 
   return hasContent;
+}
+
+export function checkMessageForm(message: UIMessage) {
+  return message.role === Role.User && message.form;
 }
 
 export function sortMessageParts(parts: UIMessagePart[]): UIMessagePart[] {

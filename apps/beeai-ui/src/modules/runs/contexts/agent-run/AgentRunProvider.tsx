@@ -17,21 +17,20 @@ import type { Agent } from '#modules/agents/api/types.ts';
 import { FileUploadProvider } from '#modules/files/contexts/FileUploadProvider.tsx';
 import { useFileUpload } from '#modules/files/contexts/index.ts';
 import { convertFilesToUIFileParts } from '#modules/files/utils.ts';
-import type { RunFormValues } from '#modules/form/types.ts';
 import { Role } from '#modules/messages/api/types.ts';
-import type { UIAgentMessage, UIMessage, UIUserMessage } from '#modules/messages/types.ts';
+import type { UIAgentMessage, UITask, UIUserMessage } from '#modules/messages/types.ts';
 import { UIMessagePartKind, UIMessageStatus } from '#modules/messages/types.ts';
 import { addTranformedMessagePart, isAgentMessage } from '#modules/messages/utils.ts';
 import { usePlatformContext } from '#modules/platform-context/contexts/index.ts';
 import { PlatformContextProvider } from '#modules/platform-context/contexts/PlatformContextProvider.tsx';
 import type { RunStats } from '#modules/runs/types.ts';
 import { SourcesProvider } from '#modules/sources/contexts/SourcesProvider.tsx';
-import { getMessageSourcesMap } from '#modules/sources/utils.ts';
-import type { TaskId } from '#modules/tasks/api/types.ts';
+import { getTaskSourcesMap } from '#modules/sources/utils.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
-import { MessagesProvider } from '../../../messages/contexts/MessagesProvider';
+import { TasksProvider } from '../../../tasks/contexts/tasks-context/TasksProvider';
 import { AgentStatusProvider } from '../agent-status/AgentStatusProvider';
+import type { AgentRunParams } from './agent-run-context';
 import { AgentRunContext } from './agent-run-context';
 
 interface Props {
@@ -49,10 +48,8 @@ export function AgentRunProviders({ agent, children }: PropsWithChildren<Props>)
 }
 
 function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
-  const [formId, setFormId] = useState<string | null>(null);
-  const [lastTaskId, setLastTaskId] = useState<TaskId | null>(null);
   const { getContextId, resetContext, getFullfilments } = usePlatformContext();
-  const [messages, getMessages, setMessages] = useImmerWithGetter<UIMessage[]>([]);
+  const [tasks, getTasks, setTasks] = useImmerWithGetter<UITask[]>([]);
   const [input, setInput] = useState<string>();
   const [isPending, setIsPending] = useState(false);
   const [stats, setStats] = useState<RunStats>();
@@ -72,10 +69,12 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
   );
   const { files, clearFiles } = useFileUpload();
 
-  const updateLastAgentMessage = useCallback(
+  const updateCurrentAgentMessage = useCallback(
     (updater: (message: UIAgentMessage) => void) => {
-      setMessages((messages) => {
-        const lastMessage = messages.at(-1);
+      setTasks((tasks) => {
+        const taskId = pendingRun.current?.taskId;
+        const task = taskId ? tasks.find(({ id }) => id === taskId) : tasks.at(-1);
+        const lastMessage = task?.messages.at(-1);
 
         if (lastMessage && isAgentMessage(lastMessage)) {
           updater(lastMessage);
@@ -84,7 +83,23 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
         }
       });
     },
-    [setMessages],
+    [setTasks],
+  );
+
+  const updateCurrentTask = useCallback(
+    (updater: (task: UITask) => void) => {
+      setTasks((tasks) => {
+        const taskId = pendingRun.current?.taskId;
+        const task = taskId ? tasks?.find((task) => taskId === task.id) : tasks.at(-1);
+
+        if (task) {
+          updater(task);
+        } else {
+          throw new Error('Task not found.');
+        }
+      });
+    },
+    [setTasks],
   );
 
   const handleError = useCallback(
@@ -96,18 +111,21 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
       });
 
       if (error instanceof Error) {
-        updateLastAgentMessage((message) => {
+        updateCurrentAgentMessage((message) => {
           message.error = error;
           message.status = UIMessageStatus.Failed;
         });
       }
     },
-    [errorHandler, updateLastAgentMessage],
+    [errorHandler, updateCurrentAgentMessage],
   );
 
   const cancel = useCallback(async () => {
     if (pendingRun.current && pendingSubscription.current) {
-      updateLastAgentMessage((message) => {
+      updateCurrentTask((task) => {
+        task.status.state = 'canceled';
+      });
+      updateCurrentAgentMessage((message) => {
         message.status = UIMessageStatus.Aborted;
       });
 
@@ -116,20 +134,20 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
     } else {
       throw new Error('No run in progress');
     }
-  }, [updateLastAgentMessage]);
+  }, [updateCurrentAgentMessage, updateCurrentTask]);
 
   const clear = useCallback(() => {
-    setMessages([]);
+    setTasks([]);
     setStats(undefined);
     clearFiles();
     resetContext();
     setIsPending(false);
     setInput(undefined);
     pendingRun.current = undefined;
-  }, [setMessages, clearFiles, resetContext]);
+  }, [setTasks, clearFiles, resetContext]);
 
   const run = useCallback(
-    async ({ input, formValues }: { input?: string; formValues?: RunFormValues }) => {
+    async ({ input, form, taskId }: AgentRunParams) => {
       const contextId = getContextId();
 
       if (pendingRun.current || pendingSubscription.current) {
@@ -146,6 +164,7 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
         id: uuid(),
         role: Role.User,
         parts: [input ? createTextPart(input) : null, ...convertFilesToUIFileParts(files)].filter(isNotNull),
+        form,
       };
       const agentMessage: UIAgentMessage = {
         id: uuid(),
@@ -154,8 +173,24 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
         status: UIMessageStatus.InProgress,
       };
 
-      setMessages((messages) => {
-        messages.push(userMessage, agentMessage);
+      setTasks((tasks) => {
+        if (taskId) {
+          const task = tasks.find(({ id }) => id === taskId);
+          if (!task) {
+            throw new Error('The task was not found');
+          }
+
+          task.messages.push(userMessage, agentMessage);
+        } else {
+          const task: UITask = {
+            id: uuid(),
+            messages: [userMessage, agentMessage],
+            contextId,
+            kind: 'task',
+            status: { state: 'unknown' },
+          };
+          tasks.push(task);
+        }
       });
 
       clearFiles();
@@ -165,18 +200,21 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
           message: userMessage,
           contextId,
           fulfillments,
-          taskId: lastTaskId ?? undefined,
-          formResponse: formValues && formId ? { id: formId, values: formValues } : undefined,
+          taskId,
+          formResponse: form?.response,
         });
         pendingRun.current = run;
 
-        pendingSubscription.current = run.subscribe(({ parts, taskId }) => {
-          updateLastAgentMessage((message) => {
-            message.id = taskId;
-          });
+        pendingSubscription.current = run.subscribe(({ parts, taskId: responseTaskId }) => {
+          if (pendingRun.current && !pendingRun.current.taskId) {
+            updateCurrentTask((task) => {
+              task.id = responseTaskId;
+            });
+            pendingRun.current.taskId = responseTaskId;
+          }
 
           parts.forEach((part) => {
-            updateLastAgentMessage((message) => {
+            updateCurrentAgentMessage((message) => {
               const updatedParts = addTranformedMessagePart(part, message);
               message.parts = updatedParts;
             });
@@ -185,18 +223,19 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
 
         const result = await run.done;
         if (result && result.type === RunResultType.FormRequired) {
-          updateLastAgentMessage((message) => {
-            message.status = UIMessageStatus.InputRequired;
+          updateCurrentTask((task) => {
+            task.status.state = 'input-required';
+          });
+          updateCurrentAgentMessage((message) => {
             message.parts.push({ kind: UIMessagePartKind.Form, ...result.form });
           });
-
-          setFormId(result.form.id);
-          setLastTaskId(result.taskId);
         } else {
-          updateLastAgentMessage((message) => {
+          updateCurrentTask((task) => {
+            task.status.state = 'completed';
+          });
+          updateCurrentAgentMessage((message) => {
             message.status = UIMessageStatus.Completed;
           });
-          setLastTaskId(null);
         }
       } catch (error) {
         handleError(error);
@@ -211,18 +250,16 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
       getContextId,
       getFullfilments,
       files,
-      setMessages,
+      setTasks,
       clearFiles,
       a2aAgentClient,
-      updateLastAgentMessage,
+      updateCurrentAgentMessage,
+      updateCurrentTask,
       handleError,
-      setLastTaskId,
-      formId,
-      lastTaskId,
     ],
   );
 
-  const sources = useMemo(() => getMessageSourcesMap(messages), [messages]);
+  const sources = useMemo(() => getTaskSourcesMap(tasks), [tasks]);
 
   const contextValue = useMemo(() => {
     return {
@@ -239,9 +276,9 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
   return (
     <AgentStatusProvider agent={agent} isMonitorStatusEnabled>
       <SourcesProvider sources={sources}>
-        <MessagesProvider messages={getMessages()}>
+        <TasksProvider tasks={getTasks()}>
           <AgentRunContext.Provider value={contextValue}>{children}</AgentRunContext.Provider>
-        </MessagesProvider>
+        </TasksProvider>
       </SourcesProvider>
     </AgentStatusProvider>
   );

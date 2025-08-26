@@ -6,6 +6,7 @@
 import type { UIAgentMessage } from '#modules/messages/types.ts';
 import { getMessageForm } from '#modules/messages/utils.ts';
 import { useAgentRun } from '#modules/runs/contexts/agent-run/index.ts';
+import { useTask } from '#modules/tasks/contexts/task-context/index.ts';
 
 import type { RunFormValues } from '../types';
 import { FormRenderer } from './FormRenderer';
@@ -17,6 +18,9 @@ interface Props {
 export function MessageForm({ message }: Props) {
   const formPart = getMessageForm(message);
   const { run } = useAgentRun();
+  const { task } = useTask();
+
+  const isLastMessage = task.messages.at(-1)?.id === message.id;
 
   if (!formPart) {
     return null;
@@ -26,8 +30,14 @@ export function MessageForm({ message }: Props) {
     <FormRenderer
       definition={formPart}
       showHeading={false}
+      isDisabled={!isLastMessage}
       onSubmit={(values: RunFormValues) => {
-        run({ formValues: values });
+        const form = {
+          request: formPart,
+          response: { id: formPart.id, values },
+        };
+
+        run({ form, taskId: task.id });
       }}
     />
   );

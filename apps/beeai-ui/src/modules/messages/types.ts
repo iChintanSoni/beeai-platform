@@ -3,25 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { FormRender } from '#api/a2a/extensions/ui/form.ts';
+import type { Task } from '@a2a-js/sdk';
+
+import type { FormRender, FormResponse } from '#api/a2a/extensions/ui/form.ts';
 
 import type { Role } from './api/types';
 
-export interface UIMessage {
+export interface UITask extends Task {
+  messages: UIMessage[];
+}
+
+export interface UIMessageBase {
   id: string;
   role: Role;
   parts: UIMessagePart[];
   error?: Error;
 }
 
-export interface UIUserMessage extends UIMessage {
+export interface UIUserMessage extends UIMessageBase {
   role: Role.User;
+  form?: UIMessageForm;
 }
 
-export interface UIAgentMessage extends UIMessage {
+export interface UIAgentMessage extends UIMessageBase {
   role: Role.Agent;
   status: UIMessageStatus;
 }
+
+export type UIMessage = UIUserMessage | UIAgentMessage;
 
 export type UIMessagePart =
   | UITextPart
@@ -104,7 +113,6 @@ export enum UIMessagePartKind {
 export enum UIMessageStatus {
   InProgress = 'in-progress',
   Completed = 'completed',
-  InputRequired = 'input-required',
   Aborted = 'aborted',
   Failed = 'failed',
 }
@@ -114,7 +122,7 @@ export enum UITransformType {
   Image = 'image',
 }
 
-export enum UIFormType {
-  Render = 'render',
-  Response = 'response',
+export interface UIMessageForm {
+  request: FormRender;
+  response: FormResponse;
 }

@@ -38,6 +38,7 @@ export interface ChatParams {
 }
 
 export interface ChatRun<UIGenericPart = never> {
+  taskId?: TaskId;
   done: Promise<null | FormRequiredResult>;
   subscribe: (fn: (data: { parts: (UIMessagePart | UIGenericPart)[]; taskId: TaskId }) => void) => () => void;
   cancel: () => Promise<void>;

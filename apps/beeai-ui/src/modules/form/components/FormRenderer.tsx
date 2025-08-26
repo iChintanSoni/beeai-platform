@@ -18,10 +18,11 @@ interface Props {
   definition: FormRender;
   defaultHeading?: string;
   showHeading?: boolean;
+  isDisabled?: boolean;
   onSubmit: (values: RunFormValues) => void;
 }
 
-export function FormRenderer({ definition, defaultHeading, showHeading = true, onSubmit }: Props) {
+export function FormRenderer({ definition, defaultHeading, showHeading = true, isDisabled, onSubmit }: Props) {
   const { id, title, description, columns, submit_label, fields } = definition;
 
   const defaultValues = getDefaultValues(fields);
@@ -32,22 +33,26 @@ export function FormRenderer({ definition, defaultHeading, showHeading = true, o
 
   return (
     <FormProvider {...form}>
-      <form id={id} className={classes.root} onSubmit={form.handleSubmit(onSubmit)}>
-        {showHeading && heading && <h2 className={classes.heading}>{heading}</h2>}
+      <form id={id} onSubmit={form.handleSubmit(onSubmit)}>
+        <fieldset disabled={isDisabled} className={classes.root}>
+          {showHeading && heading && <h2 className={classes.heading}>{heading}</h2>}
 
-        {description && <p>{description}</p>}
+          {description && <p>{description}</p>}
 
-        <div className={classes.fields} style={{ '--grid-columns': columns } as CSSProperties}>
-          {fields.map((field) => (
-            <FormField key={field.id} field={field} />
-          ))}
-        </div>
+          <div className={classes.fields} style={{ '--grid-columns': columns } as CSSProperties}>
+            {fields.map((field) => (
+              <FormField key={field.id} field={field} />
+            ))}
+          </div>
 
-        <div className={classes.submit}>
-          <Button type="submit" size="md">
-            {submit_label ?? 'Submit'}
-          </Button>
-        </div>
+          {!isDisabled && (
+            <div className={classes.submit}>
+              <Button type="submit" size="md">
+                {submit_label ?? 'Submit'}
+              </Button>
+            </div>
+          )}
+        </fieldset>
       </form>
     </FormProvider>
   );

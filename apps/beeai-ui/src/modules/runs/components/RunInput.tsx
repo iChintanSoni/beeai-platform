@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { InlineLoading } from '@carbon/react';
 import { useCallback, useRef, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { mergeRefs } from 'react-merge-refs';
@@ -59,7 +60,8 @@ export function RunInput({ promptExamples, onSubmit }: Props) {
 
   const inputProps = register('input', { required: true });
   const inputValue = watch('input');
-  const isSubmitDisabled = isPending || isFileUploadPending || !inputValue || !contextId;
+  const isInitializing = !contextId;
+  const isSubmitDisabled = isPending || isFileUploadPending || !inputValue || isInitializing;
 
   const dispatchInputEventAndFocus = useCallback(() => {
     const inputElem = inputRef.current;
@@ -129,12 +131,16 @@ export function RunInput({ promptExamples, onSubmit }: Props) {
           </div>
 
           <div className={classes.submit}>
-            <RunSubmit
-              isPending={isPending}
-              isFileUploadPending={isFileUploadPending}
-              disabled={isSubmitDisabled}
-              onCancel={cancel}
-            />
+            {!isInitializing ? (
+              <RunSubmit
+                isPending={isPending}
+                isFileUploadPending={isFileUploadPending}
+                disabled={isSubmitDisabled}
+                onCancel={cancel}
+              />
+            ) : (
+              <InlineLoading iconDescription="Initializing conversation" />
+            )}
           </div>
         </div>
 

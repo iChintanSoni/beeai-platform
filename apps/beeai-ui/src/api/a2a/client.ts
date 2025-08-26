@@ -158,6 +158,7 @@ export const buildA2AClient = <UIGenericPart = never>({
     };
 
     const run: ChatRun<UIGenericPart> = {
+      taskId,
       done: iterateOverStream(),
       subscribe: (fn) => {
         const subscription = messageSubject

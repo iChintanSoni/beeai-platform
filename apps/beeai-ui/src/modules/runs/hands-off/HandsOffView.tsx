@@ -11,7 +11,7 @@ import { MainContent } from '#components/layouts/MainContent.tsx';
 import type { Agent } from '#modules/agents/api/types.ts';
 import { SourcesPanel } from '#modules/sources/components/SourcesPanel.tsx';
 
-import { useMessages } from '../../messages/contexts';
+import { useTasks } from '../../tasks/contexts/tasks-context';
 import { RunFormView } from '../components/RunFormView';
 import { RunLandingView } from '../components/RunLandingView';
 import { useAgentRun } from '../contexts/agent-run';
@@ -42,9 +42,9 @@ function HandsOff() {
     return formRender ?? undefined;
   }, [agent.capabilities]);
 
-  const { messages } = useMessages();
+  const { tasks } = useTasks();
 
-  const isIdle = !(isPending || messages?.length);
+  const isIdle = !(isPending || tasks?.length);
 
   return (
     <>
