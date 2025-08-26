@@ -214,7 +214,7 @@ def agent(
                 dependency_args = {}
                 for pname, depends in dependencies.items():
                     # call dependencies with the first message and initialize their lifespan
-                    dependency_args[pname] = await stack.enter_async_context(depends(message, context))
+                    dependency_args[pname] = await stack.enter_async_context(depends(message, context, dependency_args))
 
                 async def agent_generator():
                     yield_queue = context._yield_queue
@@ -356,10 +356,16 @@ class Executor(AgentExecutor):
                                 state=state, message=with_context(message), timestamp=timestamp
                             )
                         case TaskStatusUpdateEvent(
-                            status=TaskStatus(state=state, message=message, timestamp=timestamp), final=final
+                            status=TaskStatus(state=state, message=message, timestamp=timestamp),
+                            final=final,
+                            metadata=metadata,
                         ):
                             await task_updater.update_status(
-                                state=state, message=with_context(message), timestamp=timestamp, final=final
+                                state=state,
+                                message=with_context(message),
+                                timestamp=timestamp,
+                                final=final,
+                                metadata=metadata,
                             )
                         case TaskArtifactUpdateEvent(
                             artifact=Artifact(artifact_id=artifact_id, name=name, metadata=metadata, parts=parts),
