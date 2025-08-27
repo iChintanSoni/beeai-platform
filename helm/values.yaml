@@ -79,7 +79,8 @@ initContainers:
 
 oidc:
   enabled: false
-  admin_emails: "abhishek@in.ibm.com"
+  admin_emails:
+    - example.admin@ibm.com
   nextauth_trust_host: true
   nextauth_secret: "<To generate a random string, you can use the Auth.js CLI: npx auth secret>"
   providers_path: "/providers"
