@@ -18,13 +18,8 @@ interface AgentRunContextValue {
   input?: string;
   stats?: RunStats;
   formRender?: FormRender;
-  run: (params: AgentRunParams) => Promise<void>;
+  chat: (input: string) => Promise<void>;
+  submitForm: (form: UIMessageForm, taskId?: string) => Promise<void>;
   cancel: () => void;
   clear: () => void;
-}
-
-export interface AgentRunParams {
-  input?: string;
-  form?: UIMessageForm;
-  taskId?: string;
 }

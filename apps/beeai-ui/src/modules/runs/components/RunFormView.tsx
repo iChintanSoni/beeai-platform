@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function RunFormView({ formRender }: Props) {
-  const { agent, run } = useAgentRun();
+  const { agent, submitForm } = useAgentRun();
 
   if (!formRender) {
     return false;
@@ -31,7 +31,7 @@ export function RunFormView({ formRender }: Props) {
             request: formRender,
             response: { id: formRender.id, values },
           };
-          run({ form });
+          submitForm(form);
         }}
         defaultHeading={agent.ui.user_greeting}
       />

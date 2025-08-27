@@ -18,7 +18,7 @@ import { FileUploadProvider } from '#modules/files/contexts/FileUploadProvider.t
 import { useFileUpload } from '#modules/files/contexts/index.ts';
 import { convertFilesToUIFileParts } from '#modules/files/utils.ts';
 import { Role } from '#modules/messages/api/types.ts';
-import type { UIAgentMessage, UITask, UIUserMessage } from '#modules/messages/types.ts';
+import type { UIAgentMessage, UIMessageForm, UITask, UIUserMessage } from '#modules/messages/types.ts';
 import { UIMessagePartKind, UIMessageStatus } from '#modules/messages/types.ts';
 import { addTranformedMessagePart, isAgentMessage } from '#modules/messages/utils.ts';
 import { usePlatformContext } from '#modules/platform-context/contexts/index.ts';
@@ -26,11 +26,11 @@ import { PlatformContextProvider } from '#modules/platform-context/contexts/Plat
 import type { RunStats } from '#modules/runs/types.ts';
 import { SourcesProvider } from '#modules/sources/contexts/SourcesProvider.tsx';
 import { getTaskSourcesMap } from '#modules/sources/utils.ts';
+import type { TaskId } from '#modules/tasks/api/types.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
 import { TasksProvider } from '../../../tasks/contexts/tasks-context/TasksProvider';
 import { AgentStatusProvider } from '../agent-status/AgentStatusProvider';
-import type { AgentRunParams } from './agent-run-context';
 import { AgentRunContext } from './agent-run-context';
 
 interface Props {
@@ -146,26 +146,23 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
     pendingRun.current = undefined;
   }, [setTasks, clearFiles, resetContext]);
 
+  const checkPendingRun = useCallback(() => {
+    if (pendingRun.current || pendingSubscription.current) {
+      throw new Error('A run is already in progress');
+    }
+  }, []);
+
   const run = useCallback(
-    async ({ input, form, taskId }: AgentRunParams) => {
+    async (message: UIUserMessage, taskId?: TaskId) => {
+      checkPendingRun();
+
       const contextId = getContextId();
 
-      if (pendingRun.current || pendingSubscription.current) {
-        throw new Error('A run is already in progress');
-      }
-
-      setInput(input);
       setIsPending(true);
       setStats({ startTime: Date.now() });
 
       const fulfillments = await getFullfilments();
 
-      const userMessage: UIUserMessage = {
-        id: uuid(),
-        role: Role.User,
-        parts: [input ? createTextPart(input) : null, ...convertFilesToUIFileParts(files)].filter(isNotNull),
-        form,
-      };
       const agentMessage: UIAgentMessage = {
         id: uuid(),
         role: Role.Agent,
@@ -180,11 +177,11 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
             throw new Error('The task was not found');
           }
 
-          task.messages.push(userMessage, agentMessage);
+          task.messages.push(message, agentMessage);
         } else {
           const task: UITask = {
             id: uuid(),
-            messages: [userMessage, agentMessage],
+            messages: [message, agentMessage],
             contextId,
             kind: 'task',
             status: { state: 'unknown' },
@@ -193,15 +190,12 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
         }
       });
 
-      clearFiles();
-
       try {
         const run = a2aAgentClient.chat({
-          message: userMessage,
+          message,
           contextId,
           fulfillments,
           taskId,
-          formResponse: form?.response,
         });
         pendingRun.current = run;
 
@@ -247,16 +241,50 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
       }
     },
     [
+      checkPendingRun,
       getContextId,
       getFullfilments,
-      files,
       setTasks,
-      clearFiles,
       a2aAgentClient,
-      updateCurrentAgentMessage,
       updateCurrentTask,
+      updateCurrentAgentMessage,
       handleError,
     ],
+  );
+
+  const chat = useCallback(
+    (input: string) => {
+      checkPendingRun();
+
+      setInput(input);
+
+      const message: UIUserMessage = {
+        id: uuid(),
+        role: Role.User,
+        parts: [createTextPart(input), ...convertFilesToUIFileParts(files)].filter(isNotNull),
+      };
+
+      clearFiles();
+
+      return run(message);
+    },
+    [checkPendingRun, clearFiles, files, run],
+  );
+
+  const submitForm = useCallback(
+    (form: UIMessageForm, taskId?: TaskId) => {
+      checkPendingRun();
+
+      const message: UIUserMessage = {
+        id: uuid(),
+        role: Role.User,
+        parts: [],
+        form,
+      };
+
+      return run(message, taskId);
+    },
+    [checkPendingRun, run],
   );
 
   const sources = useMemo(() => getTaskSourcesMap(tasks), [tasks]);
@@ -267,11 +295,12 @@ function AgentRunProvider({ agent, children }: PropsWithChildren<Props>) {
       isPending,
       input,
       stats,
-      run,
+      chat,
+      submitForm,
       cancel,
       clear,
     };
-  }, [agent, isPending, input, stats, run, cancel, clear]);
+  }, [agent, isPending, input, stats, chat, submitForm, cancel, clear]);
 
   return (
     <AgentStatusProvider agent={agent} isMonitorStatusEnabled>

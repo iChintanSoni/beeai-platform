@@ -8,7 +8,7 @@ import type { ContextId, TaskId } from '#modules/tasks/api/types.ts';
 
 import type { LLMDemand, LLMFulfillment } from './extensions/services/llm';
 import type { MCPDemand, MCPFulfillment } from './extensions/services/mcp';
-import type { FormRender, FormResponse } from './extensions/ui/form';
+import type { FormRender } from './extensions/ui/form';
 
 export enum RunResultType {
   FormRequired = 'form-required',
@@ -34,7 +34,6 @@ export interface ChatParams {
   contextId: ContextId;
   fulfillments: Fulfillments;
   taskId?: TaskId;
-  formResponse?: FormResponse;
 }
 
 export interface ChatRun<UIGenericPart = never> {

@@ -85,7 +85,7 @@ export const buildA2AClient = <UIGenericPart = never>({
     ...(typeof window !== 'undefined' && { fetchImpl: window.fetch.bind(window) }),
   });
 
-  const chat = ({ message, contextId, fulfillments, taskId: initialTaskId, formResponse }: ChatParams) => {
+  const chat = ({ message, contextId, fulfillments, taskId: initialTaskId }: ChatParams) => {
     const messageSubject = new Subject<ChatResult<UIGenericPart>>();
 
     let taskId: TaskId | undefined = initialTaskId;
@@ -101,10 +101,10 @@ export const buildA2AClient = <UIGenericPart = never>({
         metadata = fulfillLlmDemand(metadata, await fulfillments.llm(llmDemands));
       }
 
-      if (formResponse) {
+      if (message.form) {
         metadata = {
           ...metadata,
-          [formExtension.getUri()]: formResponse,
+          [formExtension.getUri()]: message.form.response,
         };
       }
 

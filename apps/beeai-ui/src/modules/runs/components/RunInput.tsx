@@ -42,7 +42,7 @@ export function RunInput({ promptExamples, onSubmit }: Props) {
       ui: { interaction_mode },
     },
     isPending,
-    run,
+    chat,
     cancel,
   } = useAgentRun();
   const { isPending: isFileUploadPending, isDisabled: isFileUploadDisabled } = useFileUpload();
@@ -106,7 +106,7 @@ export function RunInput({ promptExamples, onSubmit }: Props) {
             onSubmit?.();
             resetForm();
 
-            await run({ input });
+            await chat(input);
           })();
         }}
       >

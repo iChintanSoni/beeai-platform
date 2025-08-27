@@ -9,7 +9,7 @@ import type { FormRender, FormResponse } from '#api/a2a/extensions/ui/form.ts';
 
 import type { Role } from './api/types';
 
-export interface UITask extends Task {
+export interface UITask extends Omit<Task, 'history'> {
   messages: UIMessage[];
 }
 
