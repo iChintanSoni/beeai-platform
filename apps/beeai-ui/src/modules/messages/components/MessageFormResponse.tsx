@@ -6,7 +6,8 @@
 import { useMemo } from 'react';
 import { match } from 'ts-pattern';
 
-import type { FormResponseValues } from '#api/a2a/extensions/ui/form.ts';
+import type { CheckboxField, DateField, FormField, MultiSelectField, TextField } from '#api/a2a/extensions/ui/form.ts';
+import type { ValueOfField } from '#modules/form/types.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
 import type { UIMessageForm } from '../types';
@@ -16,28 +17,44 @@ interface Props {
 }
 
 export function MessageFormResponse({ form }: Props) {
-  const data = useMemo(() => {
+  const data: FieldWithValue[] = useMemo(() => {
     return form.request.fields
-      .map(({ id, label }) => {
-        const value = form.response.values[id];
-        return value ? { id, label, value } : null;
+      .map((field) => {
+        const value = form.response.values[field.id];
+        return value && value.type === field.type ? ({ ...field, value: value.value } as FieldWithValue) : null;
       })
       .filter(isNotNull);
   }, [form.request.fields, form.response.values]);
 
   return (
     <>
-      {data.map(({ id, label, value }) => (
-        <p key={id}>
-          {label}: <FormValueRenderer value={value} />
-        </p>
-      ))}
+      {data.map((field) => {
+        const { id, label } = field;
+        return (
+          <p key={id}>
+            {label}: <FormValueRenderer field={field} />
+          </p>
+        );
+      })}
     </>
   );
 }
 
-function FormValueRenderer({ value }: { value: FormResponseValues }) {
-  return match(value)
-    .with({ type: 'text' }, { type: 'date' }, ({ value }) => value)
-    .otherwise(() => null);
+function FormValueRenderer({ field }: { field: FieldWithValue }) {
+  return (
+    <>
+      {match(field)
+        .with({ type: 'text' }, { type: 'date' }, ({ value }) => value)
+        .with({ type: 'checkbox' }, ({ value, content }) => (value ? (content ?? 'yes') : 'no'))
+        .with({ type: 'multiselect' }, ({ value }) => value?.join(', '))
+        .otherwise(() => null)}
+    </>
+  );
 }
+
+type FieldWithValueMapper<F extends FormField> = F & { value: ValueOfField<F>['value'] };
+type FieldWithValue =
+  | FieldWithValueMapper<TextField>
+  | FieldWithValueMapper<DateField>
+  | FieldWithValueMapper<CheckboxField>
+  | FieldWithValueMapper<MultiSelectField>;

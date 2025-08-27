@@ -119,7 +119,7 @@ export type FormField = z.infer<typeof fieldSchema>;
 
 export type FormRender = z.infer<typeof renderSchema>;
 export type FormResponse = z.infer<typeof responseSchema>;
-export type FormResponseValues = FormResponse['values'][string];
+export type FormResponseValue = FormResponse['values'][string];
 
 export const formMessageExtension: A2AUiExtension<typeof URI, FormRender> = {
   getMessageMetadataSchema: () => z.object({ [URI]: renderSchema }).partial(),

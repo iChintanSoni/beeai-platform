@@ -66,14 +66,13 @@ interests=MultiSelectField(
     options=[OptionItem(id="cuisine",label="Cuisine"),OptionItem(id="nature",label="Nature"),OptionItem(id="photography",label="Photography")]
 )
 
-form_extension_spec = beeai_sdk.a2a.extensions.FormExtensionSpec(
-    params=beeai_sdk.a2a.extensions.FormRender(
+form_render = FormRender(
         id="adventure_form",
         title="Let’s go on an adventure",
         columns=2,
         fields=[location, flexible, interests]
     )
-)
+form_extension_spec = FormExtensionSpec(form_render)
 
 server = Server()
 
@@ -113,7 +112,7 @@ async def agent(
     """Request form data"""
     
     print(input)
-    form_data = await form.parse_form_response(message=input)
+    form_data = form.parse_form_response(message=input)
     
     yield f"Hello {form_data.values['location'].value}"
 

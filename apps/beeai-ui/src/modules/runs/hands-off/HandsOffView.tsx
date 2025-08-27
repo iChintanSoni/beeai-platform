@@ -12,7 +12,7 @@ import type { Agent } from '#modules/agents/api/types.ts';
 import { SourcesPanel } from '#modules/sources/components/SourcesPanel.tsx';
 
 import { useTasks } from '../../tasks/contexts/tasks-context';
-import { RunFormView } from '../components/RunFormView';
+import { FormRenderView } from '../components/FormRenderView';
 import { RunLandingView } from '../components/RunLandingView';
 import { useAgentRun } from '../contexts/agent-run';
 import { AgentRunProviders } from '../contexts/agent-run/AgentRunProvider';
@@ -49,7 +49,7 @@ function HandsOff() {
   return (
     <>
       <MainContent spacing="md">
-        {formRender ? <RunFormView formRender={formRender} /> : isIdle ? <RunLandingView /> : <HandsOffOutputView />}
+        {isIdle ? formRender ? <FormRenderView formRender={formRender} /> : <RunLandingView /> : <HandsOffOutputView />}
       </MainContent>
 
       <SourcesPanel />

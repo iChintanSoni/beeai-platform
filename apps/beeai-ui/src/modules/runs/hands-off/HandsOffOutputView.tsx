@@ -4,7 +4,8 @@
  */
 
 import { Container } from '#components/layouts/Container.tsx';
-import { checkMessageContent, isAgentMessage } from '#modules/messages/utils.ts';
+import { MessageFormResponse } from '#modules/messages/components/MessageFormResponse.tsx';
+import { checkMessageContent, isAgentMessage, isUserMessage } from '#modules/messages/utils.ts';
 
 import { useTasks } from '../../tasks/contexts/tasks-context';
 import { MessageTrajectories } from '../../trajectories/components/MessageTrajectories';
@@ -18,7 +19,9 @@ export function HandsOffOutputView() {
   const { input, isPending, cancel, clear } = useAgentRun();
   const { tasks } = useTasks();
 
-  const message = tasks.at(0)?.messages.find(isAgentMessage);
+  const task = tasks.at(0);
+  const form = task?.messages.find(isUserMessage)?.form;
+  const message = task?.messages.find(isAgentMessage);
   const hasOutput = message ? checkMessageContent(message) : false;
   const containerSize = hasOutput ? 'md' : 'sm';
 
@@ -27,7 +30,7 @@ export function HandsOffOutputView() {
       <Container size={containerSize} className={classes.holder}>
         <header className={classes.header}>
           <div className={classes.headerContainer}>
-            <p className={classes.input}>{input}</p>
+            <div className={classes.input}>{form ? <MessageFormResponse form={form} /> : <p>{input}</p>}</div>
 
             <NewSessionButton onClick={clear} />
           </div>

@@ -9,13 +9,13 @@ import { FormRenderer } from '#modules/form/components/FormRenderer.tsx';
 import type { RunFormValues } from '#modules/form/types.ts';
 
 import { useAgentRun } from '../contexts/agent-run';
-import classes from './RunLandingView.module.scss';
+import classes from './FormRenderView.module.scss';
 
 interface Props {
   formRender: FormRender;
 }
 
-export function RunFormView({ formRender }: Props) {
+export function FormRenderView({ formRender }: Props) {
   const { agent, submitForm } = useAgentRun();
 
   if (!formRender) {
