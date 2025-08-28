@@ -19,10 +19,10 @@ export default function UserAvatar(props: UserAvatarProps) {
   return (
     <div className="user-icon overflow-user-menu">
       <svg width="40px" height="40px" viewBox="0 0 40 40" version="1.1" xmlns="http://www.w3.org/2000/svg">
-        <g id="avatar-icon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="avatar-icon" stroke="none" strokeWidth="1" fill="none" fillRule="evenodd">
           <g id="Group">
             <circle id="Oval" stroke="#979797" cx="20" cy="20" r="19.5"></circle>
-            <text id="TH" font-family="Helvetica" font-size="12" font-weight="bold" fill="#FFFFFF">
+            <text id="TH" fontFamily="Helvetica" fontSize="12" fontWeight="bold" fill="#FFFFFF">
               <tspan x="10" y="24">
                 {userInitials}
               </tspan>
