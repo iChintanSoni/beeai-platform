@@ -193,14 +193,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     jwt({ token, account, trigger, session }) {
       if (trigger === 'update') {
         token.name = session.user.name;
-        if (token['id_token'] && session) {
-          if (!session['id_token']) {
-            session['id_token'] = token['id_token'];
-          }
-        }
-        if (token['access_token']) {
-          session['access_token'] = token['access_token'];
-        }
       }
       // pull the id token out of the account on signIn
       if (account) {
@@ -210,8 +202,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session }) {
-      // if (token?.id_token) session['id_token'] = token.id_token;
-      // if (token?.access_token) session['access_token'] = token.access_token;
       return session;
     },
   },
