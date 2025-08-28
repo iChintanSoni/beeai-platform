@@ -18,7 +18,7 @@ export default function Avatar() {
   return (
     <div className={classes.avatar}>
       <OverflowMenu flipped renderIcon={getUserAvatar}>
-        <OverflowMenuItem itemText="About" />
+        <OverflowMenuItem itemText={session?.user?.name || 'Not logged in'} />
       </OverflowMenu>
     </div>
   );
