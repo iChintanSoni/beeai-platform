@@ -19,10 +19,23 @@ let provider_list: {
   client_id: string;
   client_secret: string;
   nextauth_redirect_proxy_url: string;
+  JWKS: {
+    (protectedHeader?: jose.JWSHeaderParameters, token?: jose.FlattenedJWSInput): Promise<jose.CryptoKey>;
+    coolingDown: boolean;
+    fresh: boolean;
+    reloading: boolean;
+    reload: () => Promise<void>;
+    jwks: () => jose.JSONWebKeySet | undefined;
+  };
 }[] = [];
 if (OIDC_ENABLED) {
   try {
     provider_list = JSON.parse(process.env.OIDC_PROVIDERS || '[]');
+    for (const provider of provider_list) {
+      const JWKS = jose.createRemoteJWKSet(new URL(provider.jwks_url));
+      provider.JWKS = JWKS;
+    }
+    console.log('Providers loaded.');
   } catch (parse_err) {
     console.warn('Unable to parse provider list');
     console.error(parse_err);
@@ -125,8 +138,7 @@ async function internalDecode(params: JWTDecodeParams): Promise<JWT | null> {
 
   for (const provider of provider_list) {
     try {
-      const JWKS = jose.createRemoteJWKSet(new URL(provider.jwks_url));
-      const { payload } = await jose.jwtVerify(params?.token || '', JWKS, {
+      const { payload } = await jose.jwtVerify(params?.token || '', provider.JWKS, {
         issuer: provider.issuer,
         audience: provider.client_id,
       });
