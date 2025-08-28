@@ -6,7 +6,7 @@
 import uniqBy from 'lodash/uniqBy';
 import { v4 as uuid } from 'uuid';
 
-import type { UISourcePart, UITask, UITransformPart } from '#modules/messages/types.ts';
+import type { UIMessage, UISourcePart, UITransformPart } from '#modules/messages/types.ts';
 import { UIMessagePartKind, UITransformType } from '#modules/messages/types.ts';
 import { getMessageSources } from '#modules/messages/utils.ts';
 import { isNotNull } from '#utils/helpers.ts';
@@ -38,16 +38,14 @@ export function transformSourcePart(sourcePart: UISourcePart): UITransformPart {
   return transformPart;
 }
 
-export function getTaskSourcesMap(tasks: UITask[]) {
-  const sources = tasks
-    .flatMap(({ messages }) => messages)
-    .reduce<MessageSourcesMap>(
-      (data, message) => ({
-        ...data,
-        [message.id]: getMessageSources(message),
-      }),
-      {},
-    );
+export function getMessagesSourcesMap(messages: UIMessage[]) {
+  const sources = messages.reduce<MessageSourcesMap>(
+    (data, message) => ({
+      ...data,
+      [message.id]: getMessageSources(message),
+    }),
+    {},
+  );
 
   return sources;
 }

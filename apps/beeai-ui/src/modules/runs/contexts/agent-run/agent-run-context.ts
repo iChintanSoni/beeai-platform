@@ -14,7 +14,11 @@ export const AgentRunContext = createContext<AgentRunContextValue | undefined>(u
 
 interface AgentRunContextValue {
   agent: Agent;
+  status: AgentRunStatus;
   isPending: boolean;
+  isInitializing: boolean;
+  isActionRequired: boolean;
+  isReady: boolean;
   input?: string;
   stats?: RunStats;
   formRender?: FormRender;
@@ -22,4 +26,11 @@ interface AgentRunContextValue {
   submitForm: (form: UIMessageForm, taskId?: string) => Promise<void>;
   cancel: () => void;
   clear: () => void;
+}
+
+export enum AgentRunStatus {
+  Initializing = 'initializing',
+  Ready = 'ready',
+  Pending = 'pending',
+  ActionRequired = 'action-required',
 }

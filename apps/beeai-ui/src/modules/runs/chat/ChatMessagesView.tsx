@@ -9,10 +9,9 @@ import { IconButton } from '@carbon/react';
 import { Container } from '#components/layouts/Container.tsx';
 import { useIsScrolled } from '#hooks/useIsScrolled.ts';
 import { isAgentMessage, isUserMessage } from '#modules/messages/utils.ts';
-import { TaskProvider } from '#modules/tasks/contexts/task-context/TaskProvider.tsx';
 
 import { FileUpload } from '../../files/components/FileUpload';
-import { useTasks } from '../../tasks/contexts/tasks-context';
+import { useMessages } from '../../messages/contexts';
 import { NewSessionButton } from '../components/NewSessionButton';
 import { RunInput } from '../components/RunInput';
 import { RunStatusBar } from '../components/RunStatusBar';
@@ -25,7 +24,7 @@ import { ChatUserMessage } from './ChatUserMessage';
 export function ChatMessagesView() {
   const { scrollElementRef, observeElementRef, isScrolled, scrollToBottom } = useIsScrolled();
   const { isPending, clear } = useAgentRun();
-  const { tasks } = useTasks();
+  const { messages } = useMessages();
   const {
     status: { isNotInstalled, isStarting },
   } = useAgentStatus();
@@ -40,26 +39,19 @@ export function ChatMessagesView() {
             </header>
 
             <ol className={classes.messages} aria-label="messages">
-              {tasks.map((task) => {
-                const { messages } = task;
+              {messages.map((message, idx) => {
+                const isUser = isUserMessage(message);
+                const isAgent = isAgentMessage(message);
+                const isLast = idx == messages.length - 1;
+
                 return (
-                  <TaskProvider task={task} key={task.id}>
-                    {task.messages.map((message, idx) => {
-                      const isUser = isUserMessage(message);
-                      const isAgent = isAgentMessage(message);
-                      const isLast = idx == messages.length - 1;
+                  <li key={message.id} className={classes.message}>
+                    {isUser && <ChatUserMessage message={message} />}
 
-                      return (
-                        <li key={message.id} className={classes.message}>
-                          {isUser && <ChatUserMessage message={message} />}
+                    {isAgent && <ChatAgentMessage message={message} />}
 
-                          {isAgent && <ChatAgentMessage message={message} />}
-
-                          {isLast && <div ref={observeElementRef} />}
-                        </li>
-                      );
-                    })}
-                  </TaskProvider>
+                    {isLast && <div ref={observeElementRef} />}
+                  </li>
                 );
               })}
             </ol>

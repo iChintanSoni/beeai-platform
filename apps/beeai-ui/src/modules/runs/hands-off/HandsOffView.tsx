@@ -9,9 +9,9 @@ import { formExtension } from '#api/a2a/extensions/ui/form.ts';
 import { extractServiceExtensionDemands } from '#api/a2a/extensions/utils.ts';
 import { MainContent } from '#components/layouts/MainContent.tsx';
 import type { Agent } from '#modules/agents/api/types.ts';
+import { useMessages } from '#modules/messages/contexts/index.ts';
 import { SourcesPanel } from '#modules/sources/components/SourcesPanel.tsx';
 
-import { useTasks } from '../../tasks/contexts/tasks-context';
 import { FormRenderView } from '../components/FormRenderView';
 import { RunLandingView } from '../components/RunLandingView';
 import { useAgentRun } from '../contexts/agent-run';
@@ -42,9 +42,9 @@ function HandsOff() {
     return formRender ?? undefined;
   }, [agent.capabilities]);
 
-  const { tasks } = useTasks();
+  const { messages } = useMessages();
 
-  const isIdle = !(isPending || tasks?.length);
+  const isIdle = !(isPending || messages?.length);
 
   return (
     <>

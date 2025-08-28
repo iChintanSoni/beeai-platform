@@ -39,14 +39,14 @@ date_from=DateField(
     type="date",
     id="date",
     label="Date from",
-    required=True,
+    required=False,
     col_span=1
 )
 date_to=DateField(
     type="date",
     id="date_to",
     label="Date to",
-    required=True,
+    required=False,
     col_span=1
 )
 flexible=CheckboxField(
@@ -54,6 +54,14 @@ flexible=CheckboxField(
     id="flexible",
     label="Do you have flexibility with your travel dates?",
     content="Yes, I'm flexible",
+    required=False,
+    col_span=2
+)
+flexible=FileField(
+    type="file",
+    id="notes",
+    label="Upload notes",
+    accept=["text/*"],
     required=False,
     col_span=2
 )
@@ -70,7 +78,7 @@ form_render = FormRender(
         id="adventure_form",
         title="Let’s go on an adventure",
         columns=2,
-        fields=[location, flexible, interests]
+        fields=[location, date_from, date_to, flexible, interests]
     )
 form_extension_spec = FormExtensionSpec(form_render)
 
@@ -78,7 +86,7 @@ server = Server()
 
 
 @server.agent(
-    name="Form Agent",
+    name="Single-turn Form Agent",
     documentation_url="https://github.com/i-am-bee/beeai-platform/blob/main/agents/official/beeai-framework/chat",
     version="1.0.0",
     default_input_modes=["text", "text/plain"],
@@ -120,7 +128,7 @@ async def agent(
 def serve():
     server.run(
         host=os.getenv("HOST", "127.0.0.1"),
-        port=int(os.getenv("PORT", 10000)),
+        port=int(os.getenv("PORT", 10001)),
         configure_telemetry=True,
     )
 

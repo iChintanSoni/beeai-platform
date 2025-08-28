@@ -12,7 +12,6 @@ import { TextAreaAutoHeight } from '#components/TextAreaAutoHeight/TextAreaAutoH
 import { InteractionMode } from '#modules/agents/api/types.ts';
 import { FileUploadButton } from '#modules/files/components/FileUploadButton.tsx';
 import { useFileUpload } from '#modules/files/contexts/index.ts';
-import { usePlatformContext } from '#modules/platform-context/contexts/index.ts';
 import { dispatchInputEventOnTextarea, submitFormOnEnter } from '#utils/form-utils.ts';
 
 import { ChatDefaultTools } from '../chat/constants';
@@ -35,13 +34,13 @@ export function RunInput({ promptExamples, onSubmit }: Props) {
 
   const [promptExamplesOpen, setPromptExamplesOpen] = useState(false);
 
-  const { contextId } = usePlatformContext();
-
   const {
     agent: {
       ui: { interaction_mode },
     },
+    isReady,
     isPending,
+    isInitializing,
     chat,
     cancel,
   } = useAgentRun();
@@ -60,8 +59,9 @@ export function RunInput({ promptExamples, onSubmit }: Props) {
 
   const inputProps = register('input', { required: true });
   const inputValue = watch('input');
-  const isInitializing = !contextId;
-  const isSubmitDisabled = isPending || isFileUploadPending || !inputValue || isInitializing;
+  const isSubmitDisabled = !isReady || isFileUploadPending || !inputValue;
+
+  console.log({ isReady, isPending });
 
   const dispatchInputEventAndFocus = useCallback(() => {
     const inputElem = inputRef.current;

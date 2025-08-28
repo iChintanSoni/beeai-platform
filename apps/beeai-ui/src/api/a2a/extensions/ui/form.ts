@@ -49,8 +49,8 @@ const fileFieldValue = z.object({
     .array(
       z.object({
         uri: z.string(),
-        name: z.string().nullish(),
-        mime_type: z.string().nullish(),
+        name: z.string().optional(),
+        mime_type: z.string().optional(),
       }),
     )
     .nullish(),

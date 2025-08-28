@@ -6,6 +6,7 @@
 import type { Task } from '@a2a-js/sdk';
 
 import type { FormRender, FormResponse } from '#api/a2a/extensions/ui/form.ts';
+import type { TaskId } from '#modules/tasks/api/types.ts';
 
 import type { Role } from './api/types';
 
@@ -17,6 +18,7 @@ export interface UIMessageBase {
   id: string;
   role: Role;
   parts: UIMessagePart[];
+  taskId?: TaskId;
   error?: Error;
 }
 
@@ -113,6 +115,7 @@ export enum UIMessagePartKind {
 export enum UIMessageStatus {
   InProgress = 'in-progress',
   Completed = 'completed',
+  InputRequired = 'input-required',
   Aborted = 'aborted',
   Failed = 'failed',
 }
@@ -124,5 +127,5 @@ export enum UITransformType {
 
 export interface UIMessageForm {
   request: FormRender;
-  response: FormResponse;
+  response?: FormResponse;
 }

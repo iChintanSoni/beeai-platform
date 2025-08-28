@@ -6,35 +6,54 @@
 import { useMemo } from 'react';
 import { match } from 'ts-pattern';
 
-import type { CheckboxField, DateField, FormField, MultiSelectField, TextField } from '#api/a2a/extensions/ui/form.ts';
+import type {
+  CheckboxField,
+  DateField,
+  FileField,
+  FormField,
+  MultiSelectField,
+  TextField,
+} from '#api/a2a/extensions/ui/form.ts';
+import { getFileUrl } from '#api/a2a/utils.ts';
+import { FileCard } from '#modules/files/components/FileCard.tsx';
 import type { ValueOfField } from '#modules/form/types.ts';
 import { isNotNull } from '#utils/helpers.ts';
 
 import type { UIMessageForm } from '../types';
+import classes from './MessageFormResponse.module.scss';
 
 interface Props {
   form: UIMessageForm;
 }
 
 export function MessageFormResponse({ form }: Props) {
-  const data: FieldWithValue[] = useMemo(() => {
+  const data: FieldWithValue[] | null = useMemo(() => {
+    if (!form.response) {
+      return null;
+    }
     return form.request.fields
       .map((field) => {
-        const value = form.response.values[field.id];
+        const value = form.response?.values[field.id];
         return value && value.type === field.type ? ({ ...field, value: value.value } as FieldWithValue) : null;
       })
       .filter(isNotNull);
-  }, [form.request.fields, form.response.values]);
+  }, [form.request.fields, form.response]);
+
+  // TODO: Temporary solution for cancelled form request
+  if (!data) {
+    return <p className={classes.empty}>Message has no content</p>;
+  }
 
   return (
     <>
       {data.map((field) => {
-        const { id, label } = field;
-        return (
+        const { id, label, value } = field;
+
+        return value ? (
           <p key={id}>
             {label}: <FormValueRenderer field={field} />
           </p>
-        );
+        ) : null;
       })}
     </>
   );
@@ -47,6 +66,11 @@ function FormValueRenderer({ field }: { field: FieldWithValue }) {
         .with({ type: 'text' }, { type: 'date' }, ({ value }) => value)
         .with({ type: 'checkbox' }, ({ value, content }) => (value ? (content ?? 'yes') : 'no'))
         .with({ type: 'multiselect' }, ({ value }) => value?.join(', '))
+        .with({ type: 'file' }, ({ value }) =>
+          value?.map((file, idx) => (
+            <FileCard key={`${idx}${file.uri}`} href={getFileUrl(file)} filename={file.name ?? ''} size="sm" />
+          )),
+        )
         .otherwise(() => null)}
     </>
   );
@@ -57,4 +81,5 @@ type FieldWithValue =
   | FieldWithValueMapper<TextField>
   | FieldWithValueMapper<DateField>
   | FieldWithValueMapper<CheckboxField>
-  | FieldWithValueMapper<MultiSelectField>;
+  | FieldWithValueMapper<MultiSelectField>
+  | FieldWithValueMapper<FileField>;

@@ -5,9 +5,9 @@
 
 import { MainContent } from '#components/layouts/MainContent.tsx';
 import type { Agent } from '#modules/agents/api/types.ts';
+import { useMessages } from '#modules/messages/contexts/index.ts';
 import { SourcesPanel } from '#modules/sources/components/SourcesPanel.tsx';
 
-import { useTasks } from '../../tasks/contexts/tasks-context';
 import { RunLandingView } from '../components/RunLandingView';
 import { useAgentRun } from '../contexts/agent-run';
 import { AgentRunProviders } from '../contexts/agent-run/AgentRunProvider';
@@ -27,14 +27,14 @@ export function ChatView({ agent }: Props) {
 
 function Chat() {
   const { isPending } = useAgentRun();
-  const { tasks } = useTasks();
+  const { messages } = useMessages();
 
-  const isIdle = !(isPending || tasks.length);
+  const isLanding = !isPending && !messages.length;
 
   return (
     <>
-      <MainContent spacing="md" scrollable={isIdle}>
-        {isIdle ? <RunLandingView /> : <ChatMessagesView />}
+      <MainContent spacing="md" scrollable={isLanding}>
+        {isLanding ? <RunLandingView /> : <ChatMessagesView />}
       </MainContent>
 
       <SourcesPanel />
