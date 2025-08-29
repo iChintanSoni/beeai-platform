@@ -134,7 +134,7 @@ class AuthConfiguration(BaseModel):
     def pre_validate_auth(cls, values: dict) -> dict:
         disable_auth = values.get("disable_auth")
         if isinstance(disable_auth, str):
-            disable_auth = disable_auth.lower in ("true", "1", "yes")
+            disable_auth = disable_auth.lower() in ("true", "1", "yes")
 
         if disable_auth:
             logger.critical("Authentication is disabled! This is suitable only for local (desktop) deployment.")
