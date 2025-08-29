@@ -132,18 +132,38 @@ class AuthConfiguration(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def pre_validate_auth(cls, values: dict) -> dict:
-        if values.get("disable_auth"):
+        disable_auth = values.get("disable_auth")
+        if isinstance(disable_auth, str):
+            disable_auth = disable_auth.lower in ("true", "1", "yes")
+
+        if disable_auth:
             logger.critical("Authentication is disabled! This is suitable only for local (desktop) deployment.")
             values["jwt_secret_key"] = values.get("jwt_secret_key") or Secret("dummy-secret-key")
             values["basic"] = {"disable_basic": True}
             values["oidc"] = {"disable_oidc": True}
-            return values
+
+        else:
+            basic = values.get("basic")
+            oidc = values.get("oidc")
+
+            basic_enabled = basic and str(basic.get("disable_basic", "false")).lower() not in ("true", "1", "yes")
+            oidc_enabled = oidc and str(oidc.get("disable_oidc", "false")).lower() not in ("true", "1", "yes")
+
+            # If only one is enabled, disable the other
+            if basic_enabled and not oidc:
+                values["oidc"] = {"disable_oidc": True}
+            elif oidc_enabled and not basic:
+                values["basic"] = {"disable_basic": True}
+            elif not basic and not oidc:
+                # If neither is provided, initialize both with defaults
+                values["basic"] = {}
+                values["oidc"] = {}
+        return values
 
     @model_validator(mode="after")
     def validate_auth(self):
         if self.disable_auth:
             return self
-
         if self.basic.disable_basic and self.oidc.disable_oidc:
             raise ValueError("If auth is enabled, either basic or oidc must be enabled")
         if not self.jwt_secret_key:

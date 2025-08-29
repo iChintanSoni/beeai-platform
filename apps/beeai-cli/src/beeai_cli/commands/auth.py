@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import secrets
 import time
 import webbrowser
 from urllib.parse import urlencode
@@ -10,6 +9,7 @@ from urllib.parse import urlencode
 import anyio
 import httpx
 import uvicorn
+from authlib.common.security import generate_token
 from authlib.oauth2.rfc7636 import create_s256_code_challenge
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -44,7 +44,7 @@ async def get_resource_metadata(resource_url: str, force_refresh=False):
 
 
 def generate_pkce_pair():
-    code_verifier = secrets.token_urlsafe(64)
+    code_verifier = generate_token(64)
     code_challenge = create_s256_code_challenge(code_verifier)
     return code_verifier, code_challenge
 
@@ -134,6 +134,10 @@ async def cli_login(resource_url: str | None = None):
 
     metadata = await get_resource_metadata(resource_url=resource_url)
     auth_servers = metadata.get("authorization_servers", [])
+
+    if not auth_servers:
+        console.print("[bold red]No authorization servers found for this resource.[/bold red]")
+        raise RuntimeError("Login failed due to missing authorization servers.")
 
     if len(auth_servers) == 1:
         issuer = auth_servers[0]
