@@ -243,7 +243,8 @@ curl http://localhost:8333 >/dev/null 2>&1 && echo "Another instance at localhos
     --set docling.enabled=true \
     --set ui.enabled=false \
     --set auth.enabled="true" \
-    --set auth.adminPassword="test-password" \
+    --set auth.basic.enabled="true" \
+    --set auth.basic.adminPassword="test-password" \
     --set auth.jwtSecretKey="test-secret-key"
 
 
