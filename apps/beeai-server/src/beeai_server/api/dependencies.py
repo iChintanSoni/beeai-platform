@@ -76,7 +76,7 @@ async def authenticate_oauth_user(
 
     email = claims.get("email")
     if not email:
-        provider = next((p for p in configuration.oidc.providers if p.issuer == issuer), None)
+        provider = next((p for p in configuration.auth.oidc.providers if p.issuer == issuer), None)
         if not provider:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="issuer not configured")
         userinfo = await fetch_user_info(token, f"{provider.issuer}/userinfo")
@@ -85,7 +85,7 @@ async def authenticate_oauth_user(
     if not email:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not available in token or userinfo")
 
-    is_admin = email in configuration.oidc.admin_emails
+    is_admin = email in configuration.auth.oidc.admin_emails
 
     try:
         user = await user_service.get_user_by_email(email=email)
@@ -125,13 +125,13 @@ async def authorized_user(
             logger.info("Token is valid!")
             return token
         except PyJWTError:
-            if not configuration.oidc.disable_oidc:
+            if not configuration.auth.oidc.disable_oidc:
                 return await authenticate_oauth_user(bearer_auth, cookie_auth, user_service, configuration)
             # TODO: update agents
             logger.warning("Bearer token is invalid, agent is not probably not using llm extension correctly")
 
     if configuration.auth.disable_auth or (
-        basic_auth and basic_auth.password == configuration.auth.admin_password.get_secret_value()
+        basic_auth and basic_auth.password == configuration.auth.basic.admin_password.get_secret_value()
     ):
         user = await user_service.get_user_by_email("admin@beeai.dev")
         return AuthorizedUser(

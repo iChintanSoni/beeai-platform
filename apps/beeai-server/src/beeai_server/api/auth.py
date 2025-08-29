@@ -96,11 +96,11 @@ type JWKS_DICT = dict | None
 
 
 def setup_jwks(config: Configuration) -> JWKS_DICT:
-    if config.oidc.disable_oidc:
+    if config.auth.oidc.disable_oidc:
         return None
 
     jwks_dict_by_issuer = {}
-    for provider in config.oidc.providers:
+    for provider in config.auth.oidc.providers:
         issuer = provider.issuer
         if not issuer:
             logger.warning(f"Skipping provider with missing issuer: {provider.name}")
@@ -138,10 +138,10 @@ def extract_oauth_token(
     return cookie_token
 
 
-async def introspect_token(token: str, configuration: Configuration) -> tuple[dict, str] | None:
+async def introspect_token(token: str, config: Configuration) -> tuple[dict, str] | None:
     """Call OAuth2 introspect endpoint to validate opaque token"""
     async with httpx.AsyncClient() as client:
-        for provider in configuration.oidc.providers:
+        for provider in config.auth.oidc.providers:
             try:
                 resp = await client.post(
                     f"{provider.issuer}/introspect",
@@ -162,7 +162,7 @@ async def introspect_token(token: str, configuration: Configuration) -> tuple[di
 
 
 async def decode_oauth_jwt_or_introspect(
-    token: str, jwks_dict: dict[str, dict] | None = None, aud: str | None = None, configuration=Configuration
+    token: str, jwks_dict: dict[str, dict] | None = None, aud: str | None = None, config=Configuration
 ) -> tuple[dict, str] | None:
     if jwks_dict:
         for issuer, jwks in jwks_dict.items():
@@ -183,7 +183,7 @@ async def decode_oauth_jwt_or_introspect(
                     continue
 
     logger.info("JWT decoding failed or no JWKS, trying introspection on all providers")
-    return await introspect_token(token=token, configuration=configuration)
+    return await introspect_token(token=token, Configuration=config)
 
 
 async def fetch_user_info(token: str, userinfo_endpoint: str) -> dict:

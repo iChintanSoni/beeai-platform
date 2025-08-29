@@ -68,25 +68,6 @@ class AgentRegistryConfiguration(BaseModel):
     sync_period_cron: str = Field(default="*/5 * * * *")  # every 10 minutes
 
 
-class AuthConfiguration(BaseModel):
-    admin_password: Secret[str] | None = None
-    jwt_secret_key: Secret[str] | None = None
-    disable_auth: bool = False
-
-    @model_validator(mode="after")
-    def validate_auth(self):
-        if self.disable_auth:
-            logger.critical("Authentication is disabled! This is suitable only for local (desktop) deployment.")
-            self.admin_password = self.admin_password or Secret("dummy-admin-password")
-            self.jwt_secret_key = self.jwt_secret_key or Secret("dummy-secret-key")
-            return self
-        if not self.jwt_secret_key:
-            raise ValueError("JWT secret key must be provided if authentication is enabled")
-        if not self.admin_password:
-            raise ValueError("Admin password must be provided if authentication is enabled")
-        return self
-
-
 class OidcProvider(BaseModel):
     name: str
     issuer: AnyUrl
@@ -126,6 +107,47 @@ class OidcConfiguration(BaseModel):
             for field in required:
                 if getattr(provider, field) is None:
                     raise ValueError(f"'{field}' is required for provider '{provider.name}' if OIDC is enabled")
+        return self
+
+
+class BasicAuthConfiguration(BaseModel):
+    disable_basic: bool = False
+    admin_password: Secret[str] | None = None
+
+    @model_validator(mode="after")
+    def validate_auth(self):
+        if self.disable_basic:
+            return self
+        if not self.admin_password:
+            raise ValueError("Admin password must be provided if basic authentication is enabled")
+        return self
+
+
+class AuthConfiguration(BaseModel):
+    jwt_secret_key: Secret[str] | None = None
+    disable_auth: bool = False
+    oidc: OidcConfiguration = Field(default_factory=OidcConfiguration)
+    basic: BasicAuthConfiguration = Field(default_factory=BasicAuthConfiguration)
+
+    @model_validator(mode="before")
+    @classmethod
+    def pre_validate_auth(cls, values: dict) -> dict:
+        if values.get("disable_auth"):
+            logger.critical("Authentication is disabled! This is suitable only for local (desktop) deployment.")
+            values["jwt_secret_key"] = values.get("jwt_secret_key") or Secret("dummy-secret-key")
+            values["basic"] = {"disable_basic": True}
+            values["oidc"] = {"disable_oidc": True}
+            return values
+
+    @model_validator(mode="after")
+    def validate_auth(self):
+        if self.disable_auth:
+            return self
+
+        if self.basic.disable_basic and self.oidc.disable_oidc:
+            raise ValueError("If auth is enabled, either basic or oidc must be enabled")
+        if not self.jwt_secret_key:
+            raise ValueError("JWT secret key must be provided if authentication is enabled")
         return self
 
 
@@ -199,7 +221,6 @@ class Configuration(BaseSettings):
     )
 
     auth: AuthConfiguration = Field(default_factory=AuthConfiguration)
-    oidc: OidcConfiguration = Field(default_factory=OidcConfiguration)
     logging: LoggingConfiguration = Field(default_factory=LoggingConfiguration)
     agent_registry: AgentRegistryConfiguration = Field(default_factory=AgentRegistryConfiguration)
     mcp: McpConfiguration = Field(default_factory=McpConfiguration)

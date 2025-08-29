@@ -17,11 +17,11 @@ class AuthService:
 
     def protected_resource_metadata(self) -> dict:
         resource_id = f"http://localhost:{self._config.port}"  # TODO
-        providers = self._config.oidc.providers
+        providers = self._config.auth.oidc.providers
         authorization_server = [str(p.issuer) for p in providers if p.issuer is not None]
 
         return {
             "resource_id": resource_id,
             "authorization_servers": authorization_server,
-            "scopes_supported": list(self._config.oidc.scope),
+            "scopes_supported": list(self._config.auth.oidc.scope),
         }

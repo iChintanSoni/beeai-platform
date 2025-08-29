@@ -84,7 +84,6 @@ class BaseDriver(abc.ABC):
                     "encryptionKey": "Ovx8qImylfooq4-HNwOzKKDcXLZCB3c_m0JlB9eJBxc=",
                     "features": {"uiNavigation": True, "selfRegistration": True},
                     "auth": {"enabled": False},
-                    "oidc": {"enabled": False},
                 }
             ).encode("utf-8"),
         )
@@ -120,7 +119,7 @@ class BaseDriver(abc.ABC):
                         f"Pulling image {image}" + (f" (attempt {attempt_num})" if attempt_num > 1 else ""),
                     )
 
-        if any("oidc.enabled=true" in value.lower() for value in set_values_list):
+        if any("auth.oidc.enabled=true" in value.lower() for value in set_values_list):
             await beeai_cli.commands.platform.istio.install(driver=self)
 
         await self.run_in_vm(
