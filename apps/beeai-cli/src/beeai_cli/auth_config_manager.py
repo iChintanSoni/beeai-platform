@@ -19,7 +19,7 @@ class AuthConfigManager:
         if self.config_path.exists():
             with open(self.config_path, encoding="utf-8") as f:
                 return json.load(f)
-        return {"resources": {}, "active_resource": None}
+        return {"resources": {}, "active_resource": None, "active_token": None}
 
     def _save(self) -> None:
         with open(self.config_path, "w", encoding="utf-8") as f:
@@ -38,29 +38,27 @@ class AuthConfigManager:
             raise ValueError(f"Resource {resource} not found")
         if auth_server not in self.config["resources"][resource]["authorization_servers"]:
             raise ValueError(f"Auth Server {auth_server} not found in resource {resource}")
-        self.config["resources"][resource]["active_token"] = auth_server
+        self.config["active_token"] = auth_server
         self._save()
 
     def save_auth_token(self, resource: str, auth_server: str, token: dict[str, Any]) -> None:
         resource = make_safe_name(resource)
         resources = self.config["resources"]
         if resource not in resources:
-            resources[resource] = {"authorization_servers": {}, "active_token": None}
+            resources[resource] = {"authorization_servers": {}}
 
         resources[resource]["authorization_servers"][auth_server] = {"token": token}
-        resources[resource]["active_token"] = auth_server
+        self.config["active_token"] = auth_server
         self.config["active_resource"] = resource
         self._save()
 
     def load_auth_token(self) -> SecretStr | None:
         active_res = self.config["active_resource"]
-        if not active_res:
+        active_token = self.config["active_token"]
+        if not active_res or not active_token:
             return None
         resource = self.config["resources"].get(active_res)
         if not resource:
-            return None
-        active_token = resource.get("active_token")
-        if not active_token:
             return None
 
         access_token = resource["authorization_servers"].get(active_token, {}).get("token").get("access_token")
@@ -68,20 +66,18 @@ class AuthConfigManager:
 
     def clear_auth_token(self) -> None:
         active_res = self.config["active_resource"]
-        if not active_res:
+        active_token = self.config["active_token"]
+        if not active_res or not active_token:
             return None
         resource = self.config["resources"].get(active_res)
         if not resource:
             return None
-        active_token = resource.get("active_token")
-        if not active_token:
-            return None
         if active_token in resource["authorization_servers"]:
             del resource["authorization_servers"][active_token]
-            resource["active_token"] = None
 
-            if not resource["authorization_servers"]:
-                del self.config["resources"][active_res]
+        if not resource["authorization_servers"]:
+            del self.config["resources"][active_res]
 
-            self.config["active_resource"] = None
-            self._save()
+        self.config["active_resource"] = None
+        self.config["active_token"] = None
+        self._save()

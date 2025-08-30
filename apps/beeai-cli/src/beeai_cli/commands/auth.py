@@ -171,7 +171,7 @@ async def cli_login(resource_url: str | None = None):
     }
     auth_url = f"{oidc['authorization_endpoint']}?{urlencode(auth_params)}"
 
-    console.print(f"\nOpening browser fos login: {auth_url}")
+    console.print(f"\nOpening browser for login: {auth_url}")
     webbrowser.open(auth_url)
 
     code = await wait_for_auth_code()
