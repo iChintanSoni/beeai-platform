@@ -107,49 +107,37 @@ async def authorized_user(
     bearer_auth: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))],
     cookie_auth: Annotated[str | None, Security(api_key_cookie)],
 ) -> AuthorizedUser:
-    # 1. If auth is disabled, return admin user
-    if configuration.auth.disable_auth:
-        logger.warning("Authentication is disabled. Returning admin user.")
+    if bearer_auth:
+        # Check Bearer token first - locally this allows for "checking permissions" for development purposes
+        # even if auth is disabled (requests that would pass with no header may not pass with context token header)
+        try:
+            parsed_token = verify_internal_jwt(bearer_auth.credentials, configuration=configuration)
+            user = await user_service.get_user(parsed_token.user_id)
+            token = AuthorizedUser(
+                user=user,
+                global_permissions=parsed_token.global_permissions,
+                context_permissions=parsed_token.context_permissions,
+                token_context_id=parsed_token.context_id,
+            )
+            logger.info("Token is valid!")
+            return token
+        except PyJWTError:
+            if not configuration.auth.oidc.disable_oidc:
+                return await authenticate_oauth_user(bearer_auth, cookie_auth, user_service, configuration)
+            # TODO: update agents
+            logger.warning("Bearer token is invalid, agent is not probably not using llm extension correctly")
+
+    if configuration.auth.disable_auth or (
+        not configuration.auth.basic.disable_basic
+        and basic_auth
+        and basic_auth.password == configuration.auth.basic.admin_password.get_secret_value()
+    ):
         user = await user_service.get_user_by_email("admin@beeai.dev")
         return AuthorizedUser(
             user=user,
             global_permissions=ROLE_PERMISSIONS[user.role],
             context_permissions=ROLE_PERMISSIONS[user.role],
         )
-
-    # 2. OIDC is enabled, try Bearer token
-    if not configuration.auth.oidc.disable_oidc:
-        if bearer_auth:
-            try:
-                parsed_token = verify_internal_jwt(bearer_auth.credentials, configuration=configuration)
-                user = await user_service.get_user(parsed_token.user_id)
-                token = AuthorizedUser(
-                    user=user,
-                    global_permissions=parsed_token.global_permissions,
-                    context_permissions=parsed_token.context_permissions,
-                    token_context_id=parsed_token.context_id,
-                )
-                logger.info("Token is valid!")
-                return token
-            except PyJWTError:
-                try:
-                    return await authenticate_oauth_user(bearer_auth, cookie_auth, user_service, configuration)
-                except Exception as e:
-                    logger.error(f"OIDC authentication failed: {e}")
-                    raise RuntimeError("OIDC authentication failed.") from e
-        else:
-            raise RuntimeError("No bearer token provided")
-
-    # 3. Basic auth, fallback only if OIDC is disabled
-    if not configuration.auth.basic.disable_basic and basic_auth:
-        expected_password = configuration.auth.basic.admin_password.get_secret_value()
-        if basic_auth.password == expected_password:
-            user = await user_service.get_user_by_email("admin@beeai.dev")
-            return AuthorizedUser(
-                user=user,
-                global_permissions=ROLE_PERMISSIONS[user.role],
-                context_permissions=ROLE_PERMISSIONS[user.role],
-            )
 
     user = await user_service.get_user_by_email("user@beeai.dev")
     return AuthorizedUser(
