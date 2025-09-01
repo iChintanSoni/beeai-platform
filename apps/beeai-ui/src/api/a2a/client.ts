@@ -17,7 +17,7 @@ import { AGENT_ERROR_MESSAGE } from './constants';
 import { llmExtension } from './extensions/services/llm';
 import { mcpExtension } from './extensions/services/mcp';
 import { oauthProviderExtension } from './extensions/services/oauth-provider';
-import { formExtension, formMessageExtension, FormResponse } from './extensions/ui/form';
+import { formExtension, formMessageExtension } from './extensions/ui/form';
 import { oauthRequestExtension } from './extensions/ui/oauth';
 import {
   extractServiceExtensionDemands,
@@ -30,7 +30,7 @@ import { type ChatParams, type ChatRun, RunResultType } from './types';
 import { createUserMessage, extractTextFromMessage } from './utils';
 
 const oauthExtensionExtractor = extractServiceExtensionDemands(oauthProviderExtension);
-const fulfillOauthDemand = fulfillServiceExtensionDemand(oauthProviderExtension);
+// const fulfillOauthDemand = fulfillServiceExtensionDemand(oauthProviderExtension);
 
 const mcpExtensionExtractor = extractServiceExtensionDemands(mcpExtension);
 const fulfillMcpDemand = fulfillServiceExtensionDemand(mcpExtension);

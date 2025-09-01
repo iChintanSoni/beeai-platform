@@ -25,7 +25,7 @@ interface AgentRunContextValue {
   formRender?: FormRender;
   chat: (input: string) => Promise<void>;
   submitForm: (form: UIMessageForm, taskId?: string) => Promise<void>;
-  startAuth: (url: string, taskId: TaskId) => Promise<void>;
+  startAuth: (url: string, taskId: TaskId) => void;
   cancel: () => void;
   clear: () => void;
 }
